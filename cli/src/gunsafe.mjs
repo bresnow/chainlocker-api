@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import fs from 'fs'
-import '../index.mjs'
+import '../../index.mjs'
 import Gun from 'gun'
 import SEA from 'gun/sea.js'
 import Carets from 'carets'

@@ -1,7 +1,8 @@
+#!/usr/bin/env node
 import { $, question, YAML, chalk } from 'zx'
 import { io } from 'fsxx'
 import 'zx/globals'
-import getArgs from '../cli/utils/arg.mjs'
+import getArgs from '../cli/src/utils/arg.mjs'
 $.verbose = false
 let pkg = await io.json`package.json`
 let { message, version } = getArgs().argv

@@ -1,5 +1,4 @@
 import yargs, { Argv } from 'yargs'
-import { checkIfThis } from './check.mjs'
 /**
  *
  * @param slice - The slice of the command line to parse
