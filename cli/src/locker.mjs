@@ -6,6 +6,10 @@ import { err, info, warn } from '../utils/debug.mjs'
 import lz from '../utils/lz-encrypt.mjs'
 import lzStr from 'lz-string'
 import LOG from '../utils/log.mjs'
+import 'gun/lib/path.js'
+import 'gun/lib/load.js'
+import 'gun/lib/open.js'
+import 'gun/lib/then.js'
 const SEA = Gun.SEA
 
 export default async function Locker() {
@@ -57,30 +61,40 @@ export default async function Locker() {
   } catch (error) {
     err(error)
   }
-  let user = gun.user()
+  let user = gun.user().auth(keys, (ack) => {
+    if (ack.err) {
+      err(ack.err)
+    }
+    info('Authorized')
+  })
   async function run() {
-    let cmd = await question(chalk.white(`❱ ${lockername} ${chalk.green('>root>')}`))
+    let path
+    let cmd = await question(chalk.white(`❱ ${lockername} ${chalk.green.bold(`-->>${path ?? 'root'}>`)}`))
     if (cmd) {
       cmd = cmd.trim()
       if (cmd) {
         let runner = cmd.split(' ')
         switch (runner[0]) {
           case 'get':
-            info('get >>path/to/desired/node>>')
-            let path
             if (!runner[1]) {
-              path = await question(`${chalk.white()}`)
+              path = await question(`${chalk.white('Enter the path to desired node to retrieve raw data\n')}`)
+              info('get >>path/to/desired/node>>')
+            } else {
+              path = runner[1]
             }
-            path = runner[1]
-            let data = await user
-              .auth(keys, (ack) => {
-                if (ack.err) {
-                  err(ack.err)
+            let nodepath = user.path(path)
+            nodepath.put(await lz.encrypt({ test: 'data' }, keys))
+            let data = await new Promise((resolve, reject) => {
+              nodepath.load(function (data, key) {
+                if (!data) {
+                  warn(`No data available on node path ${path}`)
+                } else {
+                  resolve(data)
                 }
-                info('Authorized')
               })
-              .path(path)
-            if (!data) warn(`No data available on node path ${path}`)
+            })
+            console.log(await lz.decrypt(data, keys))
+
             break
           case 'put':
             break
