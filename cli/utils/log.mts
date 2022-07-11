@@ -20,7 +20,7 @@ export default (
   }
 
   const color = options.level ? colors[options.level] : 'gray'
-  const title = options.level ? titles[options.level] : 'Log'
+  const title = options.level ? titles[options.level] : 'Help'
   const docs = options.docs || undefined
 
   console.log(`\n${options.padding || ''}${rainbowRoad()}\n`)
@@ -28,14 +28,15 @@ export default (
   console.log(`${options.padding || ''}${chalk[color](`${title}:`)}\n`)
   console.log(`${options.padding || ''}${chalk.white(message)}\n`)
   console.log(`${options.padding || ''}${chalk.grey('---')}\n`)
-  console.log(`${options.padding || ''}${chalk.white('Relevant Documentation:')}\n`)
-  console.log(`${options.padding || ''}${chalk.blue(docs)}\n`)
-  console.log(`${options.padding || ''}${chalk.white('Stuck? Ask a Question:')}\n`)
-
+  if (docs) {
+    console.log(`${options.padding || ''}${chalk.white('Relevant Documentation:')}\n`)
+    console.log(`${options.padding || ''}${chalk.blue(docs)}\n`)
+    console.log(`${options.padding || ''}${chalk.white('Stuck? Ask a Question:')}\n`)
+  }
   if (options.tools && Array.isArray(options.tools)) {
-    console.log(`${options.padding || ''}${chalk.white('Helpful Tools:')}\n`)
-    options.tools.forEach((tool: { title: any; url: any }) => {
-      console.log(`${options.padding || ''}${chalk.blue(`${tool.title} — ${tool.url}`)}\n`)
+    console.log(`${options.padding || ''}${chalk.white('Current comands:')}\n`)
+    options.tools.forEach((tool: any) => {
+      console.log(`${options.padding || ''}${chalk.blue(`${tool.title} — ${tool.text}`)}\n`)
     })
   }
 

@@ -6,7 +6,7 @@ import { lzObject } from 'lz-object'
 import Pair from '../../lib/encryption/pair.mjs'
 import { checkIfThis } from '../utils/check.mjs'
 import getArgs from '../utils/arg.mjs'
-import './create.mjs'
+import './locker.mjs'
 import { err } from '../utils/debug.mjs'
 export default async function CreateLocker(lockerName: string) {
   if (!lockerName) {

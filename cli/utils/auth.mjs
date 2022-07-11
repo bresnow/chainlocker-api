@@ -23,9 +23,13 @@ switch (os.platform()) {
     break
 }
 export async function auth(pw) {
+  let { username, serial, platform, arch } = getImmutableMachineInfo()
+  return await Pair(pw, Object.entries({ username, serial, platform, arch }))
+}
+export function getImmutableMachineInfo() {
   let username = os.userInfo().username,
     serial = sn.stdout.split(':')[1].trim(),
     platform = os.platform(),
     arch = os.arch()
-  return await Pair(pw, Object.entries({ username, serial, platform, arch }))
+  return { username, serial, platform, arch }
 }

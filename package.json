@@ -27,6 +27,7 @@
   "license": "MIT",
   "homepage": "https://github.com/bresnow/chainlocker#readme",
   "dependencies": {
+    "@mdx-js/mdx": "^2.1.2",
     "@types/node-forge": "^1.0.3",
     "btoa": "^1.2.1",
     "carets": "^2.5.0",

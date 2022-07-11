@@ -1,7 +1,7 @@
 'use strict'
 import Gun from 'gun'
 import { question } from 'zx'
-import './create.mjs'
+import './locker.mjs'
 import { err } from '../utils/debug.mjs'
 export default async function CreateLocker(lockerName) {
   if (!lockerName) {
