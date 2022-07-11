@@ -28,17 +28,6 @@ type AuthFailedAck = { err: string }
  */
 const sys = {
   platform: os.platform(),
-  arch: os.arch(),
-  cpus: os.cpus(),
-  totalmem: os.totalmem(),
-  freemem: os.freemem(),
-  loadavg: os.loadavg(),
-  networkInterfaces: os.networkInterfaces(),
-  EOL: os.EOL,
-  tmpdir: os.tmpdir(),
-  homedir: os.homedir(),
-  endianness: os.endianness(),
-  release: os.release(),
   user: os.userInfo(),
   hostname: os.hostname(),
 }
@@ -124,7 +113,7 @@ const chain = Gun.chain as IGun['chain']
 
   let pair: ISEAPair
   ;(gun as any).locker = {
-    pair: async (key: any, name: any) => {
+    name: async (key: any, name: any) => {
       pair = await Pair(key, name)
       return gun.user().auth(pair, (ack: AuthSuccedAck | AuthFailedAck) => {
         let err = (ack as AuthFailedAck).err
@@ -183,14 +172,14 @@ const chain = Gun.chain as IGun['chain']
       last.length = 0
       gun
         .user()
-        .get('locker')
+        .get('gunsafe')
         .get('list')
         .map()
         .once((data) => {
           if (last.includes(data)) return
           gun
             .user()
-            .get('locker')
+            .get('gunsafe')
             .get('items')
             .get(data)
             .once((d) => {
@@ -205,22 +194,49 @@ const chain = Gun.chain as IGun['chain']
     },
     delete: async (name: any) => {
       if (!name) {
-        gun.user().get('locker').put(null)
+        gun.user().get('gunsafe').put(null)
         gun
           .user()
-          .get('locker')
+          .get('gunsafe')
           .get('list')
           .map()
           .once((data) => {
-            gun.user().get('locker').get('items').get(data).put(null)
-            gun.user().get('locker').get('list').put(null)
+            gun.user().get('gunsafe').get('items').get(data).put(null)
+            gun.user().get('gunsafe').get('list').put(null)
           })
       } else {
-        gun.user().get('locker').get('items').get(name).put(null)
+        gun.user().get('gunsafe').get('items').get(name).put(null)
       }
+    },
+    peers: (peers: boolean) => {
+      if (peers && typeof peers === 'object') gun.opt({ peers: peers })
+      if (peers === false) {
+        ;(gun as any).back('opt.peers')(gun._.opt as any).peers = {}
+      }
+      if (!peers) return (gun._.opt as any).peers
     },
     key: () => {
       return pair
+    },
+    pair: async (epriv: { epriv: string }) => {
+      if (!epriv) {
+        let keys = await SEA.pair()
+        let encryptedKeys = await SEA.encrypt(pair, keys.epriv)
+        gun.get('gunsafe').get('pair').put(encryptedKeys)
+        return keys.epriv
+      } else {
+        gun
+          .get('gunsafe')
+          .get('pair')
+          .once(async (data) => {
+            gun.user().leave()
+            data = await SEA.decrypt(data, epriv)
+            gun.user().auth(data, (ack) => {})
+            gun.on('auth', (ack) => {
+              pair = (ack as any).sea
+            })
+          })
+      }
     },
   }
   return gun

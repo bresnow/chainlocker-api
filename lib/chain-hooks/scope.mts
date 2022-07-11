@@ -1,18 +1,29 @@
-'use strict'
 import Gun from 'gun'
 import chokidar from 'chokidar'
 import fs from 'fs'
+import { $, glob } from 'zx'
+import os from 'os'
 const gun = Gun()
-function watch(what, options) {
+
+/**
+ * Watches a directory and send all its content in the database
+ * @constructor
+ * @param {string} what - Which directory hub should watch.
+ * @param {Object} options - https://gun.eco/docs/hub.js#options
+ */
+function watch(what: string | readonly string[], options: { msg: any; hubignore: any; alias: any }) {
   options = options ?? {
     msg: true,
     hubignore: false,
-    alias: require('os').userInfo().username,
+    alias: os.userInfo().username,
   }
+
   options.msg = options.msg ?? true
   options.hubignore = options.hubignore ?? false
-  options.alias = options.alias ?? require('os').userInfo().username
+  options.alias = options.alias ?? os.userInfo().username
+
   let modifiedPath = options.alias
+
   let watcher
   try {
     if (options.hubignore) {
@@ -21,27 +32,32 @@ function watch(what, options) {
       })
     } else if (!options.hubignore) {
       watcher = chokidar.watch(what, {
-        ignored: /(^|[\/\\])\../,
+        ignored: /(^|[\/\\])\../, // ignore dotfiles
         persistent: true,
       })
     }
+
     const log = console.log.bind(console)
-    let hubignore
+
+    let hubignore: string | string[]
+
+    // Handle events !
     watcher
       ?.on('add', async function (path) {
         if (options.hubignore && path.includes('.hubignore')) {
           hubignore = fs.readFileSync(what + '/.hubignore', 'utf-8')
         } else if (!path.includes('.hubignore') && !hubignore?.includes(path.substring(path.lastIndexOf('/') + 1))) {
           if (options.msg) log(`File ${path} has been added`)
+
           if (path[path.search(/^./gm)] === '/' || '.') {
             gun
               .get('hub')
-              .get(modifiedPath + path.split(require('os').userInfo().username)[1])
+              .get(modifiedPath + path.split(os.userInfo().username)[1])
               .put(fs.readFileSync(path, 'utf-8'))
           } else {
             gun
               .get('hub')
-              .get(modifiedPath + '/' + path.split(require('os').userInfo().username)[1])
+              .get(modifiedPath + '/' + path.split(os.userInfo().username)[1])
               .put(fs.readFileSync(path, 'utf-8'))
           }
         } else {
@@ -56,12 +72,12 @@ function watch(what, options) {
           if (path[path.search(/^./gm)] === '/' || '.') {
             gun
               .get('hub')
-              .get(modifiedPath + path.split(require('os').userInfo().username)[1])
+              .get(modifiedPath + path.split(os.userInfo().username)[1])
               .put(fs.readFileSync(path, 'utf-8'))
           } else {
             gun
               .get('hub')
-              .get(modifiedPath + '/' + path.split(require('os').userInfo().username)[1])
+              .get(modifiedPath + '/' + path.split(os.userInfo().username)[1])
               .put(fs.readFileSync(path, 'utf-8'))
           }
         } else {
@@ -76,12 +92,12 @@ function watch(what, options) {
           if (path[path.search(/^./gm)] === '/' || '.') {
             gun
               .get('hub')
-              .get(modifiedPath + path.split(require('os').userInfo().username)[1])
+              .get(modifiedPath + path.split(os.userInfo().username)[1])
               .put(null)
           } else {
             gun
               .get('hub')
-              .get(modifiedPath + '/' + path.split(require('os').userInfo().username)[1])
+              .get(modifiedPath + '/' + path.split(os.userInfo().username)[1])
               .put(null)
           }
         } else {

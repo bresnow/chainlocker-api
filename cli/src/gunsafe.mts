@@ -1,23 +1,28 @@
 #! /usr/bin/env node
-'use strict'
+//@ts-nocheck
 import fs from 'fs'
 import '../../index.mjs'
 import Gun from 'gun'
 import SEA from 'gun/sea.js'
+//@ts-ignore
 import Carets from 'carets'
 import '../../lib/chain-methods/chainlocker.mjs'
 const gun = Gun()
-gun.locker()
+;(gun as any).locker()
+
 let params = {
   caret: 'locker > ',
   docCaret: 'locker $ > ',
 }
+
 let carets = new Carets(params)
+
 carets.prompt('locker name > ')
-let authedUser
-carets.on('line', (data) => {
+
+let authedUser: any
+carets.on('line', (data: any) => {
   let line = data.split(' ')
-  if (!gun.locker.keys && !authedUser) {
+  if (!(gun as any).locker.keys && !authedUser) {
     auth(line)
     setTimeout(() => {
       carets.prompt(params.caret)
@@ -31,8 +36,10 @@ carets.on('line', (data) => {
   if (line[0] === 'list') list(line)
   if (line[0] === 'delete') del(line)
 })
+
 let yes = ['Y', 'y', 'yes', 'Yes', 'true', 'True', '1']
 let no = ['N', 'n', 'no', 'No', 'false', 'False', '0']
+
 async function auth(line) {
   if (line === '\r') return console.log('The locker name may not be empty.')
   authedUser = line.join(' ')
@@ -42,34 +49,38 @@ async function auth(line) {
     key = fs.readFileSync('./key', (err) => {}).toString()
     gun.locker.name(key, authedUser)
   } catch {
-    let pair2 = await SEA.pair()
-    fs.writeFile('./key', pair2.epriv, (err) => {})
-    gun.locker.name(pair2.epriv, authedUser)
+    let pair = await SEA.pair()
+    fs.writeFile('./key', pair.epriv, (err) => {})
+    gun.locker.name(pair.epriv, authedUser)
   }
 }
+
 function keypair() {
   let key = gun.locker.key()
   console.log(key)
 }
+
 function peers(line) {
-  let peers2
+  let peers
   if (line && line[1]) {
     line.shift()
     gun.locker.peers(line)
   } else {
-    peers2 = gun.locker.peers()
-    console.log(peers2)
+    peers = gun.locker.peers()
+    console.log(peers)
   }
 }
+
 async function pair(line) {
   if (line[1]) {
     gun.locker.pair(line[1])
   } else {
-    let pair2 = await gun.locker.pair()
-    console.log('\r\nYour pairing key', pair2)
+    let pair = await gun.locker.pair()
+    console.log('\r\nYour pairing key', pair)
     carets.prompt(params.caret)
   }
 }
+
 function list(line) {
   let gone = false
   if (line.includes('--deleted')) gone = true
@@ -79,6 +90,7 @@ function list(line) {
     carets.prompt(params.caret)
   })
 }
+
 function put(line) {
   let dataIndex = line.indexOf('--data')
   let data = line.splice(dataIndex, line.length)
@@ -87,21 +99,26 @@ function put(line) {
   line.slice(dataIndex)
   line.shift()
   let name = line
+
   name = name.join(' ')
   data = data.join(' ')
+
   gun.locker.put(name, data, (cb) => {
     console.log(cb)
   })
   setTimeout(() => carets.prompt(params.caret))
 }
+
 function putDoc(name, data) {
   gun.locker.put(name, data)
 }
+
 carets.on('docmode', (bool) => {
   if (bool) {
     setTimeout(() => carets.prompt(''))
   }
 })
+
 function get(name) {
   name.shift()
   let run
@@ -121,6 +138,7 @@ function get(name) {
     carets.prompt(params.caret)
   })
 }
+
 function del(line) {
   if (line.length > 1) {
     line.shift()
@@ -136,6 +154,7 @@ function del(line) {
     })
   }
 }
+
 carets.on('doc', (data) => {
   let doc = {}
   let keys = Object.keys(data)
