@@ -2,7 +2,7 @@ import Gun from 'gun'
 import { $, glob, chalk, question } from 'zx'
 import { exists } from 'fsxx'
 import { auth, getImmutableMachineInfo } from '../utils/auth.mjs'
-import { err } from '../utils/debug.mjs'
+import { err, info, warn } from '../utils/debug.mjs'
 import lz from '../utils/lz-encrypt.mjs'
 import lzStr from 'lz-string'
 import LOG from '../utils/log.mjs'
@@ -57,7 +57,7 @@ export default async function Locker() {
   } catch (error) {
     err(error)
   }
-
+  let user = gun.user()
   async function run() {
     let cmd = await question(chalk.white(`❱ ${lockername} ${chalk.green('>root>')}`))
     if (cmd) {
@@ -66,6 +66,21 @@ export default async function Locker() {
         let runner = cmd.split(' ')
         switch (runner[0]) {
           case 'get':
+            info('get >>path/to/desired/node>>')
+            let path
+            if (!runner[1]) {
+              path = await question(`${chalk.white()}`)
+            }
+            path = runner[1]
+            let data = await user
+              .auth(keys, (ack) => {
+                if (ack.err) {
+                  err(ack.err)
+                }
+                info('Authorized')
+              })
+              .path(path)
+            if (!data) warn(`No data available on node path ${path}`)
             break
           case 'put':
             break
@@ -73,6 +88,8 @@ export default async function Locker() {
             LOG('Available Commands', { level: 'info', tools: [{ title: 'help', text: 'List of Commands [current]' }] })
             break
           case 'peer':
+            break
+          case 'deploy':
             break
           case 'serve':
             break
