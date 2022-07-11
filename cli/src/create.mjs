@@ -1,40 +1,10 @@
 import Gun from 'gun'
 import { $, glob, chalk, question } from 'zx'
-// import { auth } from '../../cli/src/utils/auth.mjs'
-// import{ err, info } from '../../cli/src/utils/log.mjs'
+import { auth } from '../utils/auth.mjs'
+import { err } from '../utils/debug.mjs'
 import lz from '../utils/lz-encrypt.mjs'
-import Pair from '../utils/pair.mjs'
 
-import os from 'os'
 const SEA = Gun.SEA
-let err = console.err
-let sn
-switch (os.platform()) {
-  case 'win32':
-    sn = await $`wmic csproduct get`
-    break
-  case 'darwin':
-    sn = await $`system_profiler SPHardwareDataType | grep "Serial"`
-    break
-  case 'linux':
-    if (os.arch() === 'arm') {
-      sn = await $`cat /proc/cpuinfo | grep UUID`
-    } else {
-      sn = await $`dmidecode -t system  | grep UUID`
-    }
-    break
-  case 'freebsd':
-    sn = await $`dmidecode -t system`
-    break
-}
-export async function auth(pw) {
-  let username = os.userInfo().username,
-    serial = sn.stdout.split(':')[1].trim(),
-    platform = os.platform(),
-    arch = os.arch()
-  return await Pair(pw, Object.entries({ username, serial, platform, arch }))
-}
-
 export default async function CreateLocker() {
   Gun.chain.createLocker = async function (lockerName) {
     var _gun = this
@@ -61,11 +31,19 @@ export default async function CreateLocker() {
       .once((data) => console.log(data))
     return _gun
   }
-  let lockername = await question('Enter the name of the locker')
+  let lockername = await question(chalk.white('Enter the name of the locker \n'))
   if (lockername) {
     lockername = lockername.trim()
   }
-  let gun = new Gun()
+
+  let keys = await auth(lockername)
+  let workedName = await SEA.work(lockername, keys)
+  try {
+    await $`mkdir -p ${workedName}`
+  } catch (error) {
+    err(error)
+  }
+  let gun = new Gun({ file: workedName })
   gun.createLocker(lockername)
 }
 

@@ -3,6 +3,7 @@ import { $ } from 'zx'
 import Pair from '../../lib/encryption/pair.mjs'
 import os from 'os'
 let sn
+$.verbose = false
 switch (os.platform()) {
   case 'win32':
     sn = await $`wmic csproduct get`
