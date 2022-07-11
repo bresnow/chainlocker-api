@@ -4,6 +4,8 @@
 
 ### In Development
 
+``` yarn start ``` begins the CLI prompts.
+
 #### What I have so far
 
   [x] Proof of Work like hashing produces a keypair against password and immutable machine/user info.
