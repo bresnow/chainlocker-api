@@ -1,5 +1,5 @@
 'use strict'
-import { $, chalk } from 'zx'
+import { $ } from 'zx'
 import Pair from '../../lib/encryption/pair.mjs'
 import os from 'os'
 let sn
@@ -26,7 +26,5 @@ export async function auth(pw) {
     serial = sn.stdout.split(':')[1].trim(),
     platform = os.platform(),
     arch = os.arch()
-  console.log(chalk.blue(JSON.stringify(await Pair(pw, Object.entries({ username, serial, platform, arch })), null, 2)))
   return await Pair(pw, Object.entries({ username, serial, platform, arch }))
 }
-await auth('123456')

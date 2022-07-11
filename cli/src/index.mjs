@@ -1,23 +1,10 @@
 'use strict'
-import { $ } from 'zx'
-import os from 'os'
-console.log()
-var cmd
-switch (os.platform()) {
-  case 'win32':
-    cmd = 'wmic csproduct get'
-    break
-  case 'darwin':
-    await $`system_profiler SPHardwareDataType | grep "Serial"`
-    break
-  case 'linux':
-    if (process.arch === 'arm') {
-      await $`cat /proc/cpuinfo | grep UUID`
-    } else {
-      await $`dmidecode -t system  | grep UUID`
-    }
-    break
-  case 'freebsd':
-    cmd = 'dmidecode -t system'
-    break
+import Gun from 'gun'
+Gun.chain.replace = function (replacement) {
+  var gun2 = this
+  console.log(replacement)
+  gun2.get('does').get('it').put(replacement)
+  return gun2
 }
+const gun = new Gun()
+gun.replace({ work: 'yes' })

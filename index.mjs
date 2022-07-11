@@ -4,7 +4,7 @@ import SEA from 'gun/sea.js'
 import Pair from './pair.js'
 import { lzObject } from 'lz-object'
 import os from 'os'
-import auth from './cli/utils/auth.mjs'
+import { auth } from './cli/utils/auth.mjs'
 export const checkIfThis = {
   isObject: (value) => {
     return !!(value && typeof value === 'object' && !Array.isArray(value))

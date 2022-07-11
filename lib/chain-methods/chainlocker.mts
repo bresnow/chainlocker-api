@@ -52,55 +52,6 @@ async function sysWorked(encryptionkey: ISEAPair | null | undefined) {
   return obj
 }
 
-async function rsvEncryptCompress(object: any, encryptionkey: { epriv: string }) {
-  if (!object) {
-    console.error(`cannot encrypt and compress object as it is undefined`)
-    // throw new Error(`cannot encrypt and compress object as it is undefined`);
-  }
-  if (object && checkIfThis.isObject(object)) {
-    const entries = Object.entries(object)
-    let obj: Record<string, any> = {}
-    for (let i = 0; i < entries.length; i += 1) {
-      const [objectKey, objectValue] = entries[i]
-
-      if (encryptionkey && checkIfThis.isString(objectValue)) {
-        try {
-          let encrypted = await Gun.SEA.encrypt(objectValue, encryptionkey)
-          obj[objectKey] = encrypted
-        } catch (error) {
-          throw new Error(error as string)
-        }
-      }
-      if (checkIfThis.isObject(objectValue)) {
-        await rsvEncryptCompress(objectValue, encryptionkey)
-      }
-    }
-    return lzObject.compress(obj, { output: 'utf16' })
-  }
-}
-async function rsvDecryptDcompress(object: any, encryptionkey: { epriv: string }) {
-  if (!object) {
-    console.error('cannot decrypt and decompress object as it is undefined')
-    // throw new Error('cannot decrypt and decompress object as it is undefined');
-  }
-  if (checkIfThis.isObject(object)) {
-    const entries = Object.entries(lzObject.decompress(object, { output: 'utf16' }))
-    let obj: Record<string, any> = {}
-    for (let i = 0; i < entries.length; i += 1) {
-      const [objectKey, objectValue] = entries[i]
-
-      if (encryptionkey && checkIfThis.isString(objectValue)) {
-        let encrypted = await Gun.SEA.encrypt(objectValue, encryptionkey)
-        obj[objectKey] = encrypted
-      }
-      if (checkIfThis.isObject(objectValue)) {
-        await rsvDecryptDcompress(objectValue, encryptionkey)
-      }
-    }
-    return obj
-  }
-}
-
 const chain = Gun.chain as IGun['chain']
 
 ;(chain as any).locker = function (this: IGunInstance<any>) {

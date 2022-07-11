@@ -4,9 +4,11 @@
 
 ### In Development
 
-##### What I have so far
+#### What I have so far
 
-    -   ``` yarn start ``` produces the same keypair with password="123456" with the salt being the user's immutable machine info. Keypair can be authorized against POW hash and encrypt / decrypt data with GUN.SEA/ gun.user() api.
-    -   Thats it I forked it a day ago.. leave me the fuck alone.
+  [x] Proof of Work like hashing produces a keypair against password and immutable machine/user info.
+  [x] Encryption/ LZ-String compression traverses object values instead of stringifying objects to encrypt. Object values are not encrypted or compressed.
+  [x] Started CLI functions and corresponding Gun extensions.
+    - CreateLocker
 
  [Dan Raeder has a project that I forked. Until I have proper docs show him love. Guy is a monster.](https://github.com/draeder/gunsafe)
