@@ -1,34 +1,23 @@
 import Gun, { ISEAPair } from 'gun'
-import { $, glob } from 'zx'
+import { $, glob, question } from 'zx'
 import os from 'os'
 import { auth } from '../utils/auth.mjs'
 import { lzObject } from 'lz-object'
 import Pair from '../../lib/encryption/pair.mjs'
 import { checkIfThis } from '../utils/check.mjs'
-//@ts-ignore
-Gun.chain.replace = function (replacement) {
-  // grab a reference to gun
-  var gun = this
-
-  console.log(replacement)
-  gun.get('does').get('it').put(replacement)
-
-  return gun
+import getArgs from '../utils/arg.mjs'
+import './create.mjs'
+import { err } from '../utils/debug.mjs'
+export default async function CreateLocker(lockerName: string) {
+  if (!lockerName) {
+    err('Please enter a name for the locker')
+    return
+  }
+  let gun = new Gun()
+  ;(gun as any).createLocker(lockerName)
 }
-
-const gun = new Gun()
-//@ts-ignore
-gun.replace({ work: 'yes' })
-// let keypair
-// try {
-//    keypair = await auth('ThisBeMePassword')
-// gun.user().auth(keypair, (ack:any)=> {
-//     if (ack.err) {
-//         console.error(ack.err)
-//     }
-//     console.log(ack)
-//     console.log('YESSSSS')
-// }).get('poowater').put({ lenon:'lemon' })
-// } catch (err:any) {
-//     console.error(err)
-// }
+let lockername = await question('Enter the name of the locker')
+if (lockername) {
+  lockername = lockername.trim()
+  await CreateLocker(lockername)
+}

@@ -1,10 +1,18 @@
 'use strict'
 import Gun from 'gun'
-Gun.chain.replace = function (replacement) {
-  var gun2 = this
-  console.log(replacement)
-  gun2.get('does').get('it').put(replacement)
-  return gun2
+import { question } from 'zx'
+import './create.mjs'
+import { err } from '../utils/debug.mjs'
+export default async function CreateLocker(lockerName) {
+  if (!lockerName) {
+    err('Please enter a name for the locker')
+    return
+  }
+  let gun = new Gun()
+  gun.createLocker(lockerName)
 }
-const gun = new Gun()
-gun.replace({ work: 'yes' })
+let lockername = await question('Enter the name of the locker')
+if (lockername) {
+  lockername = lockername.trim()
+  await CreateLocker(lockername)
+}

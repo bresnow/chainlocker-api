@@ -60,11 +60,11 @@ export default {
   decrypt,
 }
 
-const test = { test: 'njsanj1', test1: 'ajbsdkjasbda2', test11: 'dkjasbdksj3', test111: 'sadahsbdkshda', testyyyy: 'TESTERRRRR' },
-  enc = { epriv: 'khjksbkdjbsajkbdljkasblfsbdajkfbsdkjfbasdklfbasljdbfskdjb' }
-console.info(`encrypting test object`)
-let encrypted = await encrypt(test, enc)
-info(JSON.stringify(encrypted, null, 2))
-console.info(`decrypting test object`)
-let decrypted = await decrypt(encrypted, enc)
-info(JSON.stringify(decrypted, null, 2))
+// const test = { test: 'njsanj1', test1: 'ajbsdkjasbda2', test11: 'dkjasbdksj3', test111: 'sadahsbdkshda', testyyyy: 'TESTERRRRR' },
+//   enc = { epriv: 'khjksbkdjbsajkbdljkasblfsbdajkfbsdkjfbasdklfbasljdbfskdjb' }
+// console.info(`encrypting test object`)
+// let encrypted = await encrypt(test, enc)
+// info(JSON.stringify(encrypted, null, 2))
+// console.info(`decrypting test object`)
+// let decrypted = await decrypt(encrypted, enc)
+// info(JSON.stringify(decrypted, null, 2))
