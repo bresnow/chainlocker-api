@@ -26,7 +26,7 @@ export async function auth(pw) {
     serial = sn.stdout.split(':')[1].trim(),
     platform = os.platform(),
     arch = os.arch()
-  console.log(chalk.blueBright(JSON.stringify(await Pair(pw, Object.entries({ username, serial, platform, arch })), null, 2)))
+  console.log(chalk.blue(JSON.stringify(await Pair(pw, Object.entries({ username, serial, platform, arch })), null, 2)))
   return await Pair(pw, Object.entries({ username, serial, platform, arch }))
 }
 await auth('123456')
