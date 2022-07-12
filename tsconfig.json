@@ -19,8 +19,8 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "cli": ["./cli/*"],
-      "utils": ["./cli/utils/*"]
+      "cli:": ["./cli/*"],
+      "utils:": ["./cli/utils/*"]
     }
   },
   "include": ["**/*.ts", "**/*.mts"],

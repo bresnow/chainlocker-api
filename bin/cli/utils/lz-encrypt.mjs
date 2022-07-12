@@ -3,7 +3,7 @@ import { lzObject } from 'lz-object'
 import { checkIfThis } from './check.mjs'
 import { err } from './debug.mjs'
 import Gun from 'gun'
-async function encrypt(object, encryptionkey) {
+async function encrypt(object, encryptionkey, compressionOptions) {
   let obj = {}
   if (object && checkIfThis.isObject(object)) {
     const entries = Object.entries(object)

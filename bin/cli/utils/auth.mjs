@@ -1,6 +1,6 @@
 'use strict'
 import { $ } from 'zx'
-import Pair from '../../lib/encryption/pair.mjs'
+import Pair from './encryption/pair.mjs'
 import os from 'os'
 let sn
 $.verbose = false
@@ -22,9 +22,9 @@ switch (os.platform()) {
     sn = await $`dmidecode -t system`
     break
 }
-export async function auth(pw) {
+export async function auth(secret) {
   let { username, serial, platform, arch } = getImmutableMachineInfo()
-  return await Pair(pw, Object.entries({ username, serial, platform, arch }))
+  return await Pair(secret, Object.entries({ username, serial, platform, arch }))
 }
 export function getImmutableMachineInfo() {
   let username = os.userInfo().username,

@@ -8,7 +8,11 @@ import Gun from 'gun'
  * LZ-Encrypt uses the sea algorith to encrypt/decrypt and compress/decompresswith lz-string.
  * The methods only effect the object values as to easily traverse graph nodes
  */
-async function encrypt(object: any, encryptionkey: ISEAPair | { epriv: string }) {
+async function encrypt(
+  object: any,
+  encryptionkey: ISEAPair | { epriv: string },
+  compressionOptions?: Partial<{ compress: boolean; encoding: 'utf16' | 'uint8array' | 'base64' | 'uri' }>
+) {
   let obj: Record<string, any> = {}
   if (object && checkIfThis.isObject(object)) {
     const entries = Object.entries(object)
@@ -27,6 +31,7 @@ async function encrypt(object: any, encryptionkey: ISEAPair | { epriv: string })
         await encrypt(objectValue, encryptionkey)
       }
     }
+    // console.log(JSON.stringify(lzObject.compress(obj, { output: 'uint8array'}), null, 2))
     obj = lzObject.compress(obj, { output: 'utf16' })
     return obj
   }
