@@ -14,7 +14,7 @@ const logger = (message, options) => {
     danger: '\u2771 Error',
   }
   const color = options.level ? colors[options.level] : 'gray'
-  const title = options.level ? titles[options.level] : 'Log'
+  const title = options.title ?? titles[options.level]
   console.log(`${''}${chalk[color](`${title}:`)}
 `)
   console.log(`${''}${chalk.white(message)}

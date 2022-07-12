@@ -9,4 +9,4 @@ let matches = await glob(['**/*.mts', 'lib/**/*.mts'], { gitignore: true })
 matches.forEach(async (file) => {
   await $`esbuild ${file} --outfile=${file.replace('mts', 'mjs')}`
 })
-await $`yarn zx cli/src/locker.mjs`
+await $`node cli/src/locker.mjs`

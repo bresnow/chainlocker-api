@@ -6,6 +6,7 @@ import { auth, getImmutableMachineInfo } from '../utils/auth.mjs'
 import { err, info, warn } from '../utils/debug.mjs'
 import lz from '../utils/lz-encrypt.mjs'
 import lzStr from 'lz-string'
+import isValidJSON from 'utils/is-valid-json.mjs'
 import LOG from '../utils/log.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
@@ -44,10 +45,6 @@ export default async function Locker() {
         })
       },
       put: async (path, data, cb) => {
-        // if (checkIfThis.isString(data) || checkIfThis.isNumber(data) || checkIfThis.isBoolean(data)){
-        //   data = await Gun.SEA.encrypt(data, keys)
-        //   data = lzStr.compressToUTF16(data)
-        // }
         if (checkIfThis.isObject(data)) {
           data = await lz.encrypt(data, keys)
         } else {
@@ -102,7 +99,7 @@ export default async function Locker() {
                   console.log(data)
                 }
               })
-              return await run(path)
+              await run(path)
             }
             break
           case 'put':
@@ -117,7 +114,7 @@ export default async function Locker() {
               gun.locker.put(path, data, (data) => {
                 if (data.err) err(data.err)
               })
-              return await run(path)
+              await run(path)
             }
             break
           case 'help':

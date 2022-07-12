@@ -1,7 +1,7 @@
 import { chalk } from 'zx'
 import rainbowRoad from './rainbowRoad.mjs'
 
-const logger = (message: string, options: { level: 'info' | 'success' | 'warning' | 'danger' }) => {
+const logger = (message: string, options: { level: 'info' | 'success' | 'warning' | 'danger'; title?: string }) => {
   const colors = {
     info: 'blue',
     success: 'green',
@@ -17,7 +17,7 @@ const logger = (message: string, options: { level: 'info' | 'success' | 'warning
   }
 
   const color = options.level ? colors[options.level] : 'gray'
-  const title = options.level ? titles[options.level] : 'Log'
+  const title = options.title ?? titles[options.level]
 
   //@ts-ignore
   console.log(`${''}${chalk[color](`${title}:`)}\n`)
