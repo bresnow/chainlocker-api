@@ -1,13 +1,13 @@
 import Gun from 'gun'
 import { $, glob, chalk, question } from 'zx'
 import { checkIfThis } from '../utils/check.mjs'
-import { exists } from 'fsxx'
+import { exists, read, write } from 'fsxx'
 import { auth, getImmutableMachineInfo } from '../utils/auth.mjs'
 import { err, info, warn } from '../utils/debug.mjs'
 import lz from '../utils/lz-encrypt.mjs'
 import lzStr from 'lz-string'
-import isValidJSON from 'utils/is-valid-json.mjs'
 import LOG from '../utils/log.mjs'
+import axios from 'redaxios'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
@@ -109,16 +109,39 @@ export default async function Locker() {
             } else {
               path = runner[1]
             }
-            if (path) {
-              let data = runner[2]
-              gun.locker.put(path, data, (data) => {
-                if (data.err) err(data.err)
-              })
+            if (path !== (`root` || undefined)) {
+              for (let i = 0; i < runner.length; i++) {
+                if (runner[i] === ('--file' || '-f')) {
+                  let file = runner[i + 1]
+                  console.log(process.cwd() + file, 'file')
+                  let data = await read(process.cwd() + file)
+                  gun.locker.put(path, data)
+                }
+                if (runner[i] === ('--url' || '-U')) {
+                  i++
+                  let urls = runner[i].split(',').flatMap((url) => url.trim())
+                  for (let url of urls) {
+                    let { data } = await axios.get(url)
+                    console.log(data)
+                    gun.locker.put(path, data, (data) => {
+                      if (data.err) {
+                        warn(data.err)
+                      } else {
+                        console.log(data)
+                      }
+                    })
+                  }
+                }
+                if (runner[i] === ('--data' || '-d')) {
+                  let data = runner[i + 1]
+                  gun.locker.put(path, data, (data) => {
+                    if (data.err) err(data.err)
+                  })
+                }
+              }
+
               await run(path)
             }
-            break
-          case 'help':
-            LOG('Available Commands', { level: 'info', tools: [{ title: 'help', text: 'List of Commands [current]' }] })
             break
           case 'peer':
             break
