@@ -1,8 +1,8 @@
 'use strict'
 import Gun from 'gun'
-import { $, fetch, glob, chalk, question } from 'zx'
+import { $, fetch, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
-import { exists, read, write } from 'fsxx'
+import { exists, read } from 'fsxx'
 import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, info, warn } from '../lib/debug.mjs'
 import Help from '../lib/help.mjs'
@@ -68,6 +68,11 @@ Gun.chain.locker = async function (lockerName, vaultDirectory) {
   }
   return _gun
 }
+let lockername = await question(chalk.white.bold('Enter the name of the locker\n'))
+if (lockername) {
+  lockername = lockername.trim()
+}
+await Run('root')
 export default async function Run(path) {
   let keys = await auth(lockername)
   let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
@@ -158,8 +163,3 @@ export default async function Run(path) {
     }
   }
 }
-let lockername = await question(chalk.white.bold('Enter the name of the locker\n'))
-if (lockername) {
-  lockername = lockername.trim()
-}
-await Run('root')

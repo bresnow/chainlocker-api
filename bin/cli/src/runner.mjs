@@ -1,8 +1,8 @@
 'use strict'
 import Gun from 'gun'
-import { $, fetch, glob, chalk, question } from 'zx'
+import { $, fetch, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
-import { exists, read, write } from 'fsxx'
+import { exists, read } from 'fsxx'
 import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, info, warn } from '../lib/debug.mjs'
 import Help from '../lib/help.mjs'
@@ -16,10 +16,10 @@ import 'gun/lib/then.js'
 const SEA = Gun.SEA
 export async function machineID_WorkSalt(lockername2, keys, vaultDirectory) {
   let workedName = await SEA.work(lockername2, keys, null, { name: 'SHA-256', length: 12 })
-  let compath2 = lzStr.compressToUTF16(workedName)
+  let compath = lzStr.compressToEncodedURIComponent(workedName)
   let $LOCKER_PATH = `${process.cwd()}/.${vaultDirectory ?? 'chainlocker'}`
   let mechID = getImmutableMachineInfo()
-  return { workedName: compath2, $LOCKER_PATH, mechID }
+  return { workedName, compath, $LOCKER_PATH, mechID }
 }
 export function validateKeys(gun, keys) {
   return new Promise((resolve, reject) => {
@@ -39,8 +39,8 @@ Gun.chain.locker = async function (lockerName, vaultDirectory) {
   let keys = await auth(lockerName)
   let { workedName, $LOCKER_PATH, mechID } = await machineID_WorkSalt(lockerName, keys, vaultDirectory)
   _gun.on('auth', (ack) => {
-    if (!ack.err && !exists(`${$LOCKER_PATH}/${compath}`)) {
-      user.get('init/locker').put({ info: mechID, workedName })
+    if (!ack.err && !exists(`${$LOCKER_PATH}/${lockerName}`)) {
+      user.get('init/locker').put({ info: mechID, workedName, name: lockerName })
     }
   })
   user.auth(keys)
@@ -68,17 +68,26 @@ Gun.chain.locker = async function (lockerName, vaultDirectory) {
   }
   return _gun
 }
+Help()
+console.log('\n\n')
+let lockername = await question(chalk.white.bold('Vault Options\n'), {
+  choices: ['Setup ChainLocker', 'Create New Vault', 'List Vaults', 'Delete Vault', 'Exit'],
+})
+if (lockername) {
+  lockername = lockername.trim()
+}
+await Run('root')
 export default async function Run(path) {
   let keys = await auth(lockername)
   let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
-  let compath2 = lzStr.compressToUTF16(workedName)
+  let compath = lzStr.compressToUTF16(workedName)
   let $LOCKER_PATH = `${process.cwd()}/.chainlocker`
-  let gun
+  let gun, prevVault, public2
   try {
-    if (!exists(`${$LOCKER_PATH}/${compath2}`)) {
-      await $`mkdir -p ${$LOCKER_PATH}/${compath2}`
+    if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
+      await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
     }
-    gun = new Gun({ file: `${$LOCKER_PATH}/${compath2}` })
+    gun = new Gun({ file: `${$LOCKER_PATH}/${lockername}` })
     gun.locker(lockername)
   } catch (error) {
     err(error)
@@ -158,8 +167,3 @@ export default async function Run(path) {
     }
   }
 }
-let lockername = await question(chalk.white.bold('Enter the name of the locker\n'))
-if (lockername) {
-  lockername = lockername.trim()
-}
-await Run('root')

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "start": "node scripts/start.mjs",
+    "start": "node bin/cli/src/index.mjs",
     "prettier": "prettier --write '**/*.{json,mjs,ts,mts}'",
     "push": "node scripts/push.mjs"
   },

@@ -1,4 +1,3 @@
-//@ts-nocheck
 import Gun from 'gun'
 import { $, fetch, glob, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
@@ -80,12 +79,6 @@ Gun.chain.locker = async function (lockerName, vaultDirectory) {
   return _gun
 }
 
-let lockername = await question(chalk.white.bold('Enter the name of the locker\n'))
-
-if (lockername) {
-  lockername = lockername.trim()
-}
-await Run('root')
 export default async function Run(path) {
   let keys = await auth(lockername)
   let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
@@ -94,8 +87,8 @@ export default async function Run(path) {
   let gun
 
   try {
-    if (!exists(`${$LOCKER_PATH}/${compath}`)) {
-      await $`mkdir -p ${$LOCKER_PATH}/${compath}`
+    if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
+      await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
     }
     gun = new Gun({ file: `${$LOCKER_PATH}/${compath}` })
     gun.locker(lockername)
@@ -103,7 +96,7 @@ export default async function Run(path) {
     err(error)
   }
 
-  let cmd = await question(chalk.white(`❱ ${lockername} ${chalk.red.bold('>>--')}${path ?? 'root'}${chalk.red.bold('-->>')}   `))
+  let cmd = await question(chalk.white(`Current Node ❱ ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}   `))
   if (cmd) {
     cmd = cmd.trim()
     if (cmd) {
@@ -137,13 +130,13 @@ export default async function Run(path) {
           console.log(getArgs(runner))
 
           if (runner[2] === ('--file' || '-f')) {
-            let file = runner[3]
-            console.log(process.cwd() + file, 'file')
+            let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
             let data = await read(process.cwd() + file)
+            console.log(process.cwd())
             let patharr = path.split('/')
             let name = patharr[patharr.length - 1]
 
-            gun.locker.put(path, { data })
+            gun.locker.put(path, data)
             await Run(path)
           }
           if (runner[2] === ('--url' || '-U')) {
@@ -158,7 +151,6 @@ export default async function Run(path) {
             //         console.log(data)
             //     }
             // })
-            await Run(path)
           }
           if (runner[2] === ('--data' || '-d')) {
             let data = runner[3]
@@ -167,7 +159,6 @@ export default async function Run(path) {
             gun.locker.put(path, { data }, (data) => {
               if (data.err) err(data.err)
             })
-            await Run(path)
           }
 
           break
@@ -176,7 +167,6 @@ export default async function Run(path) {
           console.log('PEERS', peers)
           var mesh = gun.back('opt.mesh') // DAM
           console.log('MESH', JSON.stringify(mesh))
-          await Run(path)
           // if (Array.isArray(peers)) {
           //   peers.forEach((peer) => {
           //     mesh.bye(peer);
@@ -192,18 +182,22 @@ export default async function Run(path) {
           // });
           break
         case 'deploy':
-          await Run(path)
           break
         case 'exit':
           process.exit()
         case 'serve':
-          await Run(path)
           break
         default:
           Help()
-          await Run(path)
           break
       }
+      await Run(path)
     }
   }
 }
+let lockername = await question(chalk.white.bold('Enter the name of the locker\n'))
+
+if (lockername) {
+  lockername = lockername.trim()
+}
+await Run('root')

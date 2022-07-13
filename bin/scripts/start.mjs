@@ -1,8 +1,8 @@
 #!/usr/bin/env node
+'use strict'
 import { $, glob } from 'zx'
 import 'zx/globals'
 import esbuild from 'esbuild'
-
 let matches = await glob(['**/*.mts', '**/*.mjs'], { gitignore: true })
 matches.forEach((file) => {
   esbuild.build({
@@ -12,5 +12,4 @@ matches.forEach((file) => {
     platform: 'node',
   })
 })
-
-await $``
+await $`node bin/cli/src/index.mjs`

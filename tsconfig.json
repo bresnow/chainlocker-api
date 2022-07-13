@@ -19,6 +19,6 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.mts"],
+  "include": ["**/*.mts", "cli/src/run.mjs"],
   "exclude": ["node_modules", "bin"]
 }

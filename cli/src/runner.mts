@@ -1,4 +1,4 @@
-'use strict'
+//@ts-nocheck
 import Gun from 'gun'
 import { $, fetch, glob, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
@@ -14,33 +14,45 @@ import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
 const SEA = Gun.SEA
-export async function machineID_WorkSalt(lockername2, keys, vaultDirectory) {
-  let workedName = await SEA.work(lockername2, keys, null, { name: 'SHA-256', length: 12 })
-  let compath2 = lzStr.compressToUTF16(workedName)
+
+/**
+ * The  directory that stores all the vaults and their data. Vault names are hashed with POW algorithm then compressed to URI safe utf16 characters.
+ * @param lockername the name of the locker
+ * @param keys  - The keys to use for encryption
+ * @param vaultDirectory  the directory to store the locker in if a custom directory is chosen
+ * @returns workedName the name of the locker directory
+ * returns $LOCKER_PATH the path to the locker directory
+ */
+export async function machineID_WorkSalt(lockername, keys, vaultDirectory) {
+  let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
+  let compath = lzStr.compressToEncodedURIComponent(workedName)
   let $LOCKER_PATH = `${process.cwd()}/.${vaultDirectory ?? 'chainlocker'}`
   let mechID = getImmutableMachineInfo()
-  return { workedName: compath2, $LOCKER_PATH, mechID }
+
+  return { workedName, compath, $LOCKER_PATH, mechID }
 }
+
 export function validateKeys(gun, keys) {
   return new Promise((resolve, reject) => {
     gun.user().auth(keys, (ack) => {
-      let { err: err2, get, sea } = ack ?? {}
-      if (err2) {
-        reject(err2)
+      let { err, get, sea } = ack ?? {}
+      if (err) {
+        reject(err)
       } else {
         resolve({ sea })
       }
     })
   })
 }
+
 Gun.chain.locker = async function (lockerName, vaultDirectory) {
   var _gun = this
   let user = _gun.user()
   let keys = await auth(lockerName)
   let { workedName, $LOCKER_PATH, mechID } = await machineID_WorkSalt(lockerName, keys, vaultDirectory)
   _gun.on('auth', (ack) => {
-    if (!ack.err && !exists(`${$LOCKER_PATH}/${compath}`)) {
-      user.get('init/locker').put({ info: mechID, workedName })
+    if (!ack.err && !exists(`${$LOCKER_PATH}/${lockerName}`)) {
+      user.get('init/locker').put({ info: mechID, workedName, name: lockerName })
     }
   })
   user.auth(keys)
@@ -68,22 +80,34 @@ Gun.chain.locker = async function (lockerName, vaultDirectory) {
   }
   return _gun
 }
+Help()
+console.log('\n\n')
+let lockername = await question(chalk.white.bold('Vault Options\n'), {
+  choices: ['Setup ChainLocker', 'Create New Vault', 'List Vaults', 'Delete Vault', 'Exit'],
+})
+
+if (lockername) {
+  lockername = lockername.trim()
+}
+await Run('root')
 export default async function Run(path) {
   let keys = await auth(lockername)
   let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
-  let compath2 = lzStr.compressToUTF16(workedName)
+  let compath = lzStr.compressToUTF16(workedName)
   let $LOCKER_PATH = `${process.cwd()}/.chainlocker`
-  let gun
+  let gun, prevVault, public
+
   try {
-    if (!exists(`${$LOCKER_PATH}/${compath2}`)) {
-      await $`mkdir -p ${$LOCKER_PATH}/${compath2}`
+    if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
+      await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
     }
-    gun = new Gun({ file: `${$LOCKER_PATH}/${compath2}` })
+    gun = new Gun({ file: `${$LOCKER_PATH}/${lockername}` })
     gun.locker(lockername)
   } catch (error) {
     err(error)
   }
-  let cmd = await question(chalk.white(`Current Node \u2771 ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}   `))
+
+  let cmd = await question(chalk.white(`Current Node ❱ ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}   `))
   if (cmd) {
     cmd = cmd.trim()
     if (cmd) {
@@ -115,34 +139,58 @@ export default async function Run(path) {
             path = runner[1]
           }
           console.log(getArgs(runner))
-          if (runner[2] === '--file') {
+
+          if (runner[2] === ('--file' || '-f')) {
             let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
             let data = await read(process.cwd() + file)
             console.log(process.cwd())
             let patharr = path.split('/')
             let name = patharr[patharr.length - 1]
+
             gun.locker.put(path, data)
             await Run(path)
           }
-          if (runner[2] === '--url') {
+          if (runner[2] === ('--url' || '-U')) {
             let url = runner[3]
+
             let data = await fetch(url)
             console.log(data)
+            // gun.locker.put(path,{ data}, (data) => {
+            //     if (data.err) {
+            //         warn(data.err)
+            //     } else {
+            //         console.log(data)
+            //     }
+            // })
           }
-          if (runner[2] === '--data') {
+          if (runner[2] === ('--data' || '-d')) {
             let data = runner[3]
             let patharr = path.split('/')
             let name = patharr[patharr.length - 1]
-            gun.locker.put(path, { data }, (data2) => {
-              if (data2.err) err(data2.err)
+            gun.locker.put(path, { data }, (data) => {
+              if (data.err) err(data.err)
             })
           }
+
           break
         case 'peer':
           var peers = gun.back('opt.peers')
           console.log('PEERS', peers)
-          var mesh = gun.back('opt.mesh')
+          var mesh = gun.back('opt.mesh') // DAM
           console.log('MESH', JSON.stringify(mesh))
+          // if (Array.isArray(peers)) {
+          //   peers.forEach((peer) => {
+          //     mesh.bye(peer);
+          //   });
+          // }
+          // mesh.bye(peers);
+
+          // mesh.say({
+          //   dam: 'opt',
+          //   opt: {
+          //     peers: typeof peers === 'string' ? peers : peers.map((peer) => peer),
+          //   },
+          // });
           break
         case 'deploy':
           break
@@ -158,8 +206,3 @@ export default async function Run(path) {
     }
   }
 }
-let lockername = await question(chalk.white.bold('Enter the name of the locker\n'))
-if (lockername) {
-  lockername = lockername.trim()
-}
-await Run('root')
