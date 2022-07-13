@@ -1,17 +1,17 @@
 {
   "name": "chainlocker",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Command line interface for GUN relay-server deployment, gun resource routes, and secure data storage/retrevial",
-  "main": "index.mjs",
+  "main": "index.mts",
   "type": "module",
   "scripts": {
-    "build": "zx scripts/build.mjs",
-    "start": "zx scripts/start.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/start.mjs",
     "prettier": "prettier --write '**/*.{json,mjs,ts,mts}'",
-    "push": "zx scripts/push.mjs"
+    "push": "node scripts/push.mjs"
   },
   "bin": {
-    "gunsafe": "cli/gunsafe.js"
+    "chainlocker": "cli/gunsafe.js"
   },
   "repository": {
     "type": "git",
@@ -28,19 +28,16 @@
   "homepage": "https://github.com/bresnow/chainlocker#readme",
   "dependencies": {
     "@mdx-js/mdx": "^2.1.2",
-    "@types/node-forge": "^1.0.3",
+    "@types/node-forge": "^1.0.4",
     "btoa": "^1.2.1",
-    "carets": "^2.5.0",
     "chokidar": "^3.5.3",
-    "clipboardy": "^3.0.0",
     "elliptic": "^6.5.4",
-    "esbuild": "^0.14.48",
     "fsxx": "^0.1.0",
     "global": "^4.4.0",
     "gun": "^0.2020.1237",
-    "gunsafe": "^1.5.0",
     "lz-object": "^0.1.7",
     "lz-string": "^1.4.4",
+    "node-forge": "^1.3.1",
     "zx": "^7.0.7"
   },
   "directories": {
@@ -49,7 +46,14 @@
   "devDependencies": {
     "@types/btoa": "^1.2.3",
     "@types/elliptic": "^6.4.14",
+    "@types/jest": "^27.4.1",
+    "@types/lz-string": "^1.3.34",
+    "@types/node": "^17.0.26",
     "@types/yargs": "^17.0.10",
+    "@typescript-eslint/eslint-plugin": "^5.20.0",
+    "@typescript-eslint/parser": "^5.20.0",
+    "esbuild": "^0.14.48",
+    "jest": "^28.1.2",
     "prettier": "^2.7.1",
     "yargs": "^17.5.1"
   }

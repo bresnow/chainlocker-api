@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 import { $, glob } from 'zx'
 import 'zx/globals'
-import getArgs from '../cli/utils/arg.mjs'
+import esbuild from 'esbuild'
 
-let arg = getArgs().argv
-
-let matches = await glob(['**/*.mts', 'lib/**/*.mts'], { gitignore: true })
-matches.forEach(async (file) => {
-  await $`esbuild ${file} --outfile=${file.replace('mts', 'mjs')}`
+let matches = await glob(['**/*.mts'], { gitignore: true })
+matches.forEach((file) => {
+  esbuild.build({
+    entryPoints: [file],
+    outfile: `bin/${file.replace('mts', 'mjs')}`,
+    bundle: false,
+    platform: 'node',
+  })
 })
-await $`node cli/src/locker.mjs`
+
+await $`node bin/index.mjs`

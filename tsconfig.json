@@ -17,12 +17,8 @@
     /* Experimental Options */
     "resolveJsonModule": true,
     "experimentalDecorators": true,
-    "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "cli:": ["./cli/*"],
-      "utils:": ["./cli/utils/*"]
-    }
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.ts", "**/*.mts"],
-  "exclude": ["node_modules", "build"]
+  "include": ["**/*.mts"],
+  "exclude": ["node_modules", "bin"]
 }
