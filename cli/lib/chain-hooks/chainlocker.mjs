@@ -2,6 +2,10 @@ import Gun from 'gun'
 import { auth, getImmutableMachineInfo } from '../auth.mjs'
 import lz from '../lz-encrypt.mjs'
 import { exists, read } from '../file-utils.mjs'
+import 'gun/lib/path.js'
+import 'gun/lib/load.js'
+import 'gun/lib/open.js'
+import 'gun/lib/then.js'
 const SEA = Gun.SEA
 export async function machineID_WorkSalt(lockername, keys, vaultDirectory) {
   let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
@@ -16,6 +20,11 @@ export default Gun.chain.locker = async function (lockerName, vaultDirectory) {
   let keys = await auth(lockerName)
   user.auth(keys)
   _gun.vault = (path) => {
+    let node = user
+    path = Array.isArray(path) ? path : `${path}`.split('/' || '.' || '-')
+    for (let i = 0; i < path.length; i++) {
+      node = node.get(path[i])
+    }
     return {
       async put(data, cb2) {
         if (typeof data === 'object') {
@@ -24,10 +33,10 @@ export default Gun.chain.locker = async function (lockerName, vaultDirectory) {
         if (typeof data === 'string') {
           data = await lz.encrypt(data, keys)
         }
-        user.path(path).put(data, cb2)
+        node.put(data, cb2)
       },
       async value(cb) {
-        user.path(path).once(async (data) => {
+        node.once(async (data) => {
           if (!data) return cb('Record not found')
           try {
             let state = data._['>'],
@@ -38,7 +47,7 @@ export default Gun.chain.locker = async function (lockerName, vaultDirectory) {
             // console.log(data)
             delete data._
             data = await lz.decrypt(data, keys)
-            // data = { ...data, timestamp: dateObj }
+            data = { ...data, timestamp: dateObj }
             cb(data)
           } catch (error) {
             console.error(error)

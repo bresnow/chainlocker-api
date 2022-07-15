@@ -167,7 +167,25 @@ export default async function Run(path = 'root') {
           //   },
           // });
           break
-        case 'deploy':
+        case 'dev':
+          let dev = runner[1]
+          try {
+            if (dev === 'push') {
+              await $`yarn build`
+              await $`yarn push`
+            }
+            if (dev === 'build') {
+              await $`yarn build`
+            }
+          } catch (error) {
+            err(error as string)
+          }
+
+          let exit = await question(`${chalk.white('Exit? (y/n)')}`)
+          if (exit === 'y') {
+            process.exit()
+          }
+          await Run(path ?? 'root')
           break
         case 'exit':
           process.exit()
