@@ -1,5 +1,4 @@
-//@ts-nocheck
-import Gun from 'gun'
+import Gun, { IGunInstance, ISEAPair } from 'gun'
 import { $, fetch, glob, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
 import { exists, read, write } from 'fsxx'
@@ -7,7 +6,7 @@ import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, info, warn } from '../lib/debug.mjs'
 import Help from '../lib/help.mjs'
 import '../lib/chain-hooks/chainlocker.mjs'
-import lz from '../lib/lz-encrypt.mjs'
+
 import lzStr from 'lz-string'
 import getArgs from '../lib/arg.mjs'
 import 'gun/lib/path.js'
@@ -25,10 +24,10 @@ const SEA = Gun.SEA
  * returns $LOCKER_PATH the path to the locker directory
  */
 
-export function validateKeys(gun, keys) {
+export function validateKeys(gun: IGunInstance, keys: ISEAPair) {
   return new Promise((resolve, reject) => {
     gun.user().auth(keys, (ack) => {
-      let { err, get, sea } = ack ?? {}
+      let { err, get, sea } = ack as any
       if (err) {
         reject(err)
       } else {
@@ -46,21 +45,21 @@ if (lockername) {
 Help()
 console.log('\n\n')
 await Run('root')
-export default async function Run(path) {
+export default async function Run(path = 'root') {
   let keys = await auth(lockername)
   let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
   let $LOCKER_PATH = `${process.cwd()}/.chainlocker`
-  let gun, prevVault, public
+  let gun: IGunInstance<any>, prevVault
 
   try {
     if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
       await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
     }
     gun = new Gun({ file: `${$LOCKER_PATH}/${lockername}` })
-
+    //@ts-ignore
     gun.locker(lockername)
   } catch (error) {
-    err(error)
+    err(error as string)
   }
   const check = {
     async auth(keys: ISEAPair) {
@@ -78,6 +77,7 @@ export default async function Run(path) {
     cmd = cmd.trim()
     if (cmd) {
       let runner = cmd.split(' ')
+      console.log(runner)
       switch (runner[0]) {
         case 'get':
           if (!runner[1] && !path) {
@@ -87,12 +87,9 @@ export default async function Run(path) {
             path = runner[1]
           }
           if (path) {
-            gun.locker.path(path, (data) => {
-              if (data.err) {
-                warn(data.err)
-              } else {
-                console.log(data)
-              }
+            //@ts-ignore
+            gun.vault(path).value((data) => {
+              console.log(data)
             })
             await Run(path)
           }
@@ -104,7 +101,6 @@ export default async function Run(path) {
           } else {
             path = runner[1]
           }
-          console.log(getArgs(runner))
 
           if (runner[2] === ('--file' || '-f')) {
             let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
@@ -112,36 +108,49 @@ export default async function Run(path) {
             console.log(process.cwd())
             let patharr = path.split('/')
             let name = patharr[patharr.length - 1]
-
-            gun.locker.put(path, data)
+            //@ts-ignore
+            gun.vault(path).put(data, (data) => {
+              if (data.err) {
+                warn(data.err)
+              } else {
+                console.log(data)
+              }
+            })
             await Run(path)
           }
           if (runner[2] === ('--url' || '-U')) {
             let url = runner[3]
 
             let data = await fetch(url)
-            console.log(data)
-            // gun.locker.put(path,{ data}, (data) => {
-            //     if (data.err) {
-            //         warn(data.err)
-            //     } else {
-            //         console.log(data)
-            //     }
-            // })
+            //@ts-ignore
+            gun.vault(path).put(data, (data) => {
+              if (data.err) {
+                warn(data.err)
+              } else {
+                console.log(data)
+              }
+            })
           }
           if (runner[2] === ('--data' || '-d')) {
             let data = runner[3]
             let patharr = path.split('/')
             let name = patharr[patharr.length - 1]
-            gun.locker.put(path, { data }, (data) => {
-              if (data.err) err(data.err)
+            //@ts-ignore
+            gun.vault(path).put(data, (data) => {
+              if (data.err) {
+                warn(data.err)
+              } else {
+                console.log(data)
+              }
             })
           }
 
           break
         case 'peer':
+          //@ts-ignore
           var peers = gun.back('opt.peers')
           console.log('PEERS', peers)
+          //@ts-ignore
           var mesh = gun.back('opt.mesh') // DAM
           console.log('MESH', JSON.stringify(mesh))
           // if (Array.isArray(peers)) {

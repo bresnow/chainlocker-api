@@ -75,8 +75,8 @@ export default async function Run(path) {
   let $LOCKER_PATH = `${process.cwd()}/.chainlocker`
   let gun
   try {
-    if (!exists(`${$LOCKER_PATH}/${compath2}`)) {
-      await $`mkdir -p ${$LOCKER_PATH}/${compath2}`
+    if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
+      await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
     }
     gun = new Gun({ file: `${$LOCKER_PATH}/${compath2}` })
     gun.locker(lockername)
