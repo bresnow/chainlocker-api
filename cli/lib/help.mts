@@ -14,30 +14,30 @@ export default () => {
   console.log(
     `${chalk.cyan.bold('❱ ChainLocker  ❱  ')}${chalk.white(
       `chainlocker  [   vault   ]  --current (${chalk.italic('shows current vault context')})   `
-    )}\n`
+    )}`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white(
+    `${chalk.blueBright('                 ')}${chalk.white(
       `                            --new (${chalk.italic('create new vault context')})   `
-    )}\n`
+    )}`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.red(
+    `${chalk.blueBright('                 ')}${chalk.red(
       `IN DEV                        --delete (${chalk.italic('delete current vault context')})   `
     )}\n`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white(
+    `${chalk.blueBright('                 ')}${chalk.white(
       `             [   keys    ]  --show (${chalk.italic('shows the keypair to current vault context')}) `
-    )}\n`
+    )}`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white(
+    `${chalk.blueBright('                 ')}${chalk.white(
       `                            --generate (${chalk.italic('generate and name new keypair to store in current vault context')})   `
-    )}\n`
+    )}`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.red(
+    `${chalk.blueBright('                 ')}${chalk.red(
       `IN DEV                        --env (${chalk.italic('set keypair as environment variable')})   `
     )}\n`
   )
@@ -49,12 +49,12 @@ export default () => {
     )}\n`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white(
+    `${chalk.blueBright('                ')}${chalk.white(
       '                                         --write-file <absolute local file path> '
     )}\n`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white(
+    `${chalk.blueBright('                ')}${chalk.white(
       '                                         --write-file <absolute local file path> '
     )}\n`
   )
@@ -65,9 +65,9 @@ export default () => {
     )}\n`
   )
   console.log(
-    `${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white('                                         --url <domain or ip addr> ')}\n`
+    `${chalk.blueBright('                ')}${chalk.white('                                         --url <domain or ip addr> ')}\n`
   )
-  console.log(`${chalk.blueBright('❱❱❱❱❱❱❱❱❱❱❱❱❱❱  ')}${chalk.white('                                         --string <stdin> ')}\n`)
+  console.log(`${chalk.blueBright('                ')}${chalk.white('                                         --string <stdin> ')}\n`)
 
   console.log(`\n${''}${chalk.white('Chainlocker is superpowered by GUN. https://gun.eco ')}\n`)
   console.log(`${''}${rainbowRoad()}`)

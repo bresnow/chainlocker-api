@@ -31,6 +31,7 @@
     "@types/node-forge": "^1.0.4",
     "btoa": "^1.2.1",
     "chokidar": "^3.5.3",
+    "cross-env": "^7.0.3",
     "elliptic": "^6.5.4",
     "fsxx": "^0.1.0",
     "global": "^4.4.0",

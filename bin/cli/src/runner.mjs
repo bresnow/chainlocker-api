@@ -1,12 +1,10 @@
 'use strict'
 import Gun from 'gun'
 import { $, fetch, chalk, question } from 'zx'
-import { checkIfThis } from '../lib/check.mjs'
 import { exists, read } from 'fsxx'
-import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, info, warn } from '../lib/debug.mjs'
 import Help from '../lib/help.mjs'
-import lz from '../lib/lz-encrypt.mjs'
+import '../lib/chain-hooks/chainlocker.mjs'
 import lzStr from 'lz-string'
 import getArgs from '../lib/arg.mjs'
 import 'gun/lib/path.js'
@@ -14,13 +12,6 @@ import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
 const SEA = Gun.SEA
-export async function machineID_WorkSalt(lockername2, keys, vaultDirectory) {
-  let workedName = await SEA.work(lockername2, keys, null, { name: 'SHA-256', length: 12 })
-  let compath = lzStr.compressToEncodedURIComponent(workedName)
-  let $LOCKER_PATH = `${process.cwd()}/.${vaultDirectory ?? 'chainlocker'}`
-  let mechID = getImmutableMachineInfo()
-  return { workedName, compath, $LOCKER_PATH, mechID }
-}
 export function validateKeys(gun, keys) {
   return new Promise((resolve, reject) => {
     gun.user().auth(keys, (ack) => {
@@ -33,49 +24,12 @@ export function validateKeys(gun, keys) {
     })
   })
 }
-Gun.chain.locker = async function (lockerName, vaultDirectory) {
-  var _gun = this
-  let user = _gun.user()
-  let keys = await auth(lockerName)
-  let { workedName, $LOCKER_PATH, mechID } = await machineID_WorkSalt(lockerName, keys, vaultDirectory)
-  _gun.on('auth', (ack) => {
-    if (!ack.err && !exists(`${$LOCKER_PATH}/${lockerName}`)) {
-      user.get('init/locker').put({ info: mechID, workedName, name: lockerName })
-    }
-  })
-  user.auth(keys)
-  _gun.locker = {
-    path: async (path, cb) => {
-      user.path(path).load(async (data) => {
-        if (!data) return cb({ err: 'Record not found' })
-        try {
-          delete data._
-          data = await lz.decrypt(data, keys)
-          cb(data)
-        } catch (error) {
-          err(error)
-        }
-      })
-    },
-    put: async (path, data, cb) => {
-      if (checkIfThis.isObject(data)) {
-        data = await lz.encrypt(data, keys)
-      } else {
-        data = await lz.encrypt({ data }, keys)
-      }
-      user.path(path).put(data, cb)
-    },
-  }
-  return _gun
-}
-Help()
-console.log('\n\n')
-let lockername = await question(chalk.white.bold('Vault Options\n'), {
-  choices: ['Setup ChainLocker', 'Create New Vault', 'List Vaults', 'Delete Vault', 'Exit'],
-})
+let lockername = await question(chalk.white.bold('Enter desired vault name or choose a new name to create a new vault\n'))
 if (lockername) {
   lockername = lockername.trim()
 }
+Help()
+console.log('\n\n')
 await Run('root')
 export default async function Run(path) {
   let keys = await auth(lockername)
