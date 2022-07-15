@@ -2,6 +2,7 @@
 import { $ } from 'zx'
 import Pair from './encryption/pair.mjs'
 import os from 'os'
+import config from '../../config/index.mjs'
 let sn
 $.verbose = false
 switch (os.platform()) {
@@ -33,3 +34,4 @@ export function getImmutableMachineInfo() {
     arch = os.arch()
   return { username, serial, platform, arch }
 }
+export const MASTER_KEYS = await Pair(config, Object.values(getImmutableMachineInfo()))

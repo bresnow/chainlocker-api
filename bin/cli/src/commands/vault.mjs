@@ -4,6 +4,7 @@ import { chalk, question } from 'zx'
 import Help from '../../lib/help.mjs'
 import config from '../../../config/index.mjs'
 import { readDirectorySync } from '../../lib/file-utils.mjs'
+import { remove } from '../../lib/file-utils.mjs'
 import { warn } from '../../lib/debug.mjs'
 export default async function (args = [], currentVault, gun) {
   let [key, value, ...flags] = args
@@ -53,7 +54,8 @@ export default async function (args = [], currentVault, gun) {
       )
       if (confirm.trim() === currentVault.toUpperCase()) {
         console.log(chalk.italic.white(`Deleting ${currentVault}`))
-        await Run(config.defaultRootNode, currentVault)
+        await remove(config.LockerDirectory + currentVault)
+        await Run(config.defaultRootNode, config.DefaultVault)
       } else {
         warn('Aborting vault deletion.')
         await Run(config.defaultRootNode, currentVault)

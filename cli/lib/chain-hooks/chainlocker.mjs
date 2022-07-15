@@ -1,6 +1,8 @@
 import Gun from 'gun'
 import { auth, getImmutableMachineInfo } from '../auth.mjs'
 import lz from '../lz-encrypt.mjs'
+import lzString from 'lz-string'
+import { lzObject } from 'lz-object'
 import { exists, read } from '../file-utils.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
@@ -14,29 +16,23 @@ export async function machineID_WorkSalt(lockername, keys, vaultDirectory) {
 
   return { workedName, compath, $LOCKER_PATH, mechID }
 }
-export default Gun.chain.locker = async function (lockerName, vaultDirectory) {
+Gun.chain.locker = async function (lockerName) {
   var _gun = this
   let user = _gun.user()
   let keys = await auth(lockerName)
   user.auth(keys)
   _gun.vault = (path) => {
-    let node = user
-    path = Array.isArray(path) ? path : `${path}`.split('/' || '.' || '-')
-    for (let i = 0; i < path.length; i++) {
-      node = node.get(path[i])
-    }
+    let node = user.path(path)
     return {
       async put(data, cb2) {
-        if (typeof data === 'object') {
-          data = await lz.encrypt(data, keys)
-        }
-        if (typeof data === 'string') {
-          data = await lz.encrypt(data, keys)
-        }
+        console.log('put', data)
+        data = await lz.encrypt(data, keys)
         node.put(data, cb2)
+        node.once((data) => console.log('TEST', data))
       },
       async value(cb) {
         node.once(async (data) => {
+          let obj
           if (!data) return cb('Record not found')
           try {
             let state = data._['>'],
@@ -44,15 +40,27 @@ export default Gun.chain.locker = async function (lockerName, vaultDirectory) {
             for (let val in state) {
               dateObj[val] = new Date(state[val]).toLocaleString('en-US', { timeZone: 'America/New_York' }).slice(0, -3)
             }
-            // console.log(data)
+            console.log(data)
             delete data._
             data = await lz.decrypt(data, keys)
-            data = { ...data, timestamp: dateObj }
+            obj = Object.assign(data, dateObj)
+            console.log(obj, 'decrypted')
             cb(data)
           } catch (error) {
-            console.error(error)
+            warn(error)
           }
         })
+      },
+      async uint8Press(data) {
+        if (typeof data === 'object') {
+          data = await lz.encrypt(data, keys)
+        }
+        if (typeof data === 'string') {
+          data = await SEA.encrypt(data, keys)
+          data = lzObject.compress({ data }, { output: 'uint8array' })
+        }
+        node.put(data, cb2)
+        node.once((data) => console.log('TEST', data))
       },
     }
   }

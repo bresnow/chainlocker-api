@@ -1,20 +1,21 @@
 import Gun, { IGunInstance, ISEAPair } from 'gun'
 import { $, chalk, question } from 'zx'
 import { exists } from 'fsxx'
-import { auth } from '../lib/auth.mjs'
+import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, warn } from '../lib/debug.mjs'
 import Vault from './commands/vault.mjs'
 import Help from '../lib/help.mjs'
-import '../lib/chain-hooks/chainlocker.mjs'
+// import '../lib/chain-hooks/chainlocker.mjs'
 import Push from '../lib/dev/push.mjs'
 import Build from '../lib/dev/build.mjs'
 import lzStr from 'lz-string'
-import 'gun/lib/path.js'
-import 'gun/lib/load.js'
-import 'gun/lib/open.js'
-import 'gun/lib/then.js'
+// import 'gun/lib/path.js'
+// import 'gun/lib/load.js'
+// import 'gun/lib/open.js'
+// import 'gun/lib/then.js'
 import Store from './commands/store.mjs'
 import config from '../../config/index.mjs'
+import Pair from '../lib/encryption/pair.mjs'
 const SEA = Gun.SEA
 
 /**
@@ -25,10 +26,11 @@ const SEA = Gun.SEA
  * @returns workedName the name of the locker directory
  * returns $LOCKER_PATH the path to the locker directory
  */
-
-let MASTER_KEYS = (await auth(config.DefaultVault)) as ISEAPair
+let machine = getImmutableMachineInfo()
+//Master keys for 'Public' data. Config is
+let MASTER_KEYS = (await Pair(config, Object.values(machine))) as ISEAPair
 export const getLockerName = async (compressed: string) => {
-  let decompressed = lzStr.decompressFromEncodedURIComponent(compressed)
+  let decompressed = lzStr.decompressFromUTF16(compressed)
   if (decompressed) {
     return await Gun.SEA.decrypt(decompressed, MASTER_KEYS)
   }
@@ -52,7 +54,8 @@ export function validateKeys(keys: ISEAPair = MASTER_KEYS) {
 await Run()
 export default async function Run(path = 'root-node', vault: string = config.DefaultVault) {
   let keys = await auth(vault)
-  let secureVault = lzStr.compressToEncodedURIComponent(await SEA.encrypt(vault, await auth(config.DefaultVault)))
+  let worked = (await SEA.work(vault, MASTER_KEYS)) as string
+  let secureVault = lzStr.compressToUTF16(worked)
   let $LOCKER_PATH = config.LockerDirectory + '/' + secureVault
   let gun: IGunInstance<any>
 

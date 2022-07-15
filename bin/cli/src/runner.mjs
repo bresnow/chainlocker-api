@@ -2,24 +2,21 @@
 import Gun from 'gun'
 import { $, chalk, question } from 'zx'
 import { exists } from 'fsxx'
-import { auth } from '../lib/auth.mjs'
+import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, warn } from '../lib/debug.mjs'
 import Vault from './commands/vault.mjs'
 import Help from '../lib/help.mjs'
-import '../lib/chain-hooks/chainlocker.mjs'
 import Push from '../lib/dev/push.mjs'
 import Build from '../lib/dev/build.mjs'
 import lzStr from 'lz-string'
-import 'gun/lib/path.js'
-import 'gun/lib/load.js'
-import 'gun/lib/open.js'
-import 'gun/lib/then.js'
 import Store from './commands/store.mjs'
 import config from '../../config/index.mjs'
+import Pair from '../lib/encryption/pair.mjs'
 const SEA = Gun.SEA
-let MASTER_KEYS = await auth(config.DefaultVault)
+let machine = getImmutableMachineInfo()
+let MASTER_KEYS = await Pair(config, Object.values(machine))
 export const getLockerName = async (compressed) => {
-  let decompressed = lzStr.decompressFromEncodedURIComponent(compressed)
+  let decompressed = lzStr.decompressFromUTF16(compressed)
   if (decompressed) {
     return await Gun.SEA.decrypt(decompressed, MASTER_KEYS)
   }
@@ -42,7 +39,8 @@ export function validateKeys(keys = MASTER_KEYS) {
 await Run()
 export default async function Run(path = 'root-node', vault = config.DefaultVault) {
   let keys = await auth(vault)
-  let secureVault = lzStr.compressToEncodedURIComponent(await SEA.encrypt(vault, await auth(config.DefaultVault)))
+  let worked = await SEA.work(vault, MASTER_KEYS)
+  let secureVault = lzStr.compressToUTF16(worked)
   let $LOCKER_PATH = config.LockerDirectory + '/' + secureVault
   let gun
   try {

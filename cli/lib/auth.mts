@@ -1,6 +1,8 @@
 import { $, ProcessOutput } from 'zx'
 import Pair from './encryption/pair.mjs'
 import os from 'os'
+import config from '../../config/index.mjs'
+import { ISEAPair } from 'gun/types/index.js'
 let sn: ProcessOutput
 $.verbose = false
 
@@ -34,3 +36,7 @@ export function getImmutableMachineInfo() {
     arch = os.arch()
   return { username, serial, platform, arch }
 }
+
+//Master keys for 'Public' data. Config holds all environment variables that were declared in the shell on startup..
+// More arbitrary data can be added to the config file for a more secure vault salt
+export const MASTER_KEYS = (await Pair(config, Object.values(getImmutableMachineInfo()))) as ISEAPair
