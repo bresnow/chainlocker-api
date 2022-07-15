@@ -171,11 +171,14 @@ export default async function Run(path = 'root') {
           let dev = runner[1]
           try {
             if (dev === 'push') {
-              await $`yarn build`
-              await $`yarn push`
+              let b = await $`yarn build`
+              console.log(b.stdout)
+              let push = await $`yarn push`
+              console.log(push.stdout)
             }
             if (dev === 'build') {
-              await $`yarn build`
+              let b = await $`yarn build`
+              console.log(b.stdout)
             }
           } catch (error) {
             err(error as string)
