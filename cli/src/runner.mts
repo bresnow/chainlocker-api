@@ -4,15 +4,20 @@ import { checkIfThis } from '../lib/check.mjs'
 import { exists, read, write } from 'fsxx'
 import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, info, warn } from '../lib/debug.mjs'
+import { interpretPath, mkdir, readDirectorySync } from '../lib/file-utils.mjs'
+import Vault from './commands/vault.mjs'
 import Help from '../lib/help.mjs'
 import '../lib/chain-hooks/chainlocker.mjs'
-
+import Push from '../lib/dev/push.mjs'
+import Build from '../lib/dev/build.mjs'
 import lzStr from 'lz-string'
 import getArgs from '../lib/arg.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
+import Store from './commands/store.mjs'
+import Pair from '../lib/encryption/pair.mjs'
 const SEA = Gun.SEA
 
 /**
@@ -24,181 +29,173 @@ const SEA = Gun.SEA
  * returns $LOCKER_PATH the path to the locker directory
  */
 
-export function validateKeys(gun: IGunInstance, keys: ISEAPair) {
+let config: {
+  LockerDirectory: string
+  DefaultVault: string
+  defaultRootNode: string
+  directoryPrefix: string
+} = {
+  LockerDirectory: process.env.LOCKER_DIRECTORY || '.chainlocker',
+  DefaultVault: process.env.LOCKER_NAME || 'default',
+  defaultRootNode: process.env.DEFAULT_ROOT_NODE ?? 'root',
+  directoryPrefix: 'MoUQgg3gRAxgLlAXFA',
+}
+let MASTER_KEYS = (await auth(config.DefaultVault)) as ISEAPair
+export const getLockerName = async (compressed: string) => {
+  let decompressed = lzStr.decompressFromEncodedURIComponent(compressed)
+  if (decompressed) {
+    return await Gun.SEA.decrypt(decompressed, MASTER_KEYS)
+  }
+  err('Failed to decrypt locker name. Check your master keys.')
+}
+
+export function validateKeys(keys: ISEAPair = MASTER_KEYS) {
   return new Promise((resolve, reject) => {
-    gun.user().auth(keys, (ack) => {
-      let { err, get, sea } = ack as any
-      if (err) {
-        reject(err)
-      } else {
-        resolve({ sea })
-      }
-    })
+    Gun()
+      .user()
+      .auth(keys, (ack) => {
+        let { err, get, sea } = ack as any
+        if (err) {
+          reject(err)
+        } else {
+          resolve({ sea })
+        }
+      })
   })
 }
-
-let lockername = await question(chalk.white.bold('Enter desired vault name or choose a new name to create a new vault\n'))
-
-if (lockername) {
-  lockername = lockername.trim()
+if (!exists(config.LockerDirectory)) {
+  console.log(chalk.white.italic(`No vaults found in configured vault directory...Starting ChainLocker vault setup.`))
+  await mkdir(config.LockerDirectory)
 }
-Help()
-console.log('\n\n')
-await Run('root')
-export default async function Run(path = 'root') {
-  let keys = await auth(lockername)
-  let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
-  let $LOCKER_PATH = `${process.cwd()}/.chainlocker`
-  let gun: IGunInstance<any>, prevVault
+
+await Run('root', config.DefaultVault)
+export default async function Run(path = 'root-node', vault: string = config.DefaultVault) {
+  let keys = await auth(vault)
+  let secureVault = lzStr.compressToEncodedURIComponent(await SEA.encrypt(vault, await auth(config.DefaultVault)))
+  let $LOCKER_PATH = interpretPath(config.LockerDirectory)
+  let gun: IGunInstance<any>
 
   try {
-    if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
-      await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
+    if (!exists(`${$LOCKER_PATH}/${secureVault}`)) {
+      await mkdir(config.LockerDirectory, secureVault)
     }
-    gun = new Gun({ file: `${$LOCKER_PATH}/${lockername}` })
+    gun = new Gun({ file: interpretPath(config.LockerDirectory, secureVault) })
     //@ts-ignore
-    gun.locker(lockername)
+    gun.locker(vault)
   } catch (error) {
     err(error as string)
   }
-  const check = {
-    async auth(keys: ISEAPair) {
-      try {
-        await validateKeys(gun, keys)
-        return { valid: true, keys }
-      } catch (error) {
-        err(`${error}\n INVALID KEYPAIR FOR ${lockername}`)
-        return { valid: false, keys }
-      }
-    },
-  }
-  let cmd = await question(chalk.white(`Current Node ❱ ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}   `))
+
+  let cmd = await question(chalk.white(`Current Node ❱ ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}  `))
   if (cmd) {
     cmd = cmd.trim()
     if (cmd) {
-      let runner = cmd.split(' ')
-      console.log(runner)
-      switch (runner[0]) {
-        case 'get':
-          if (!runner[1] && !path) {
-            path = await question(`${chalk.white('Enter the path to desired node to retrieve raw data\n')}`)
-            info(`get ${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')}  `)
-          } else {
-            path = runner[1]
-          }
-          if (path) {
-            //@ts-ignore
-            gun.vault(path).value((data) => {
-              console.log(data)
-            })
-            await Run(path)
-          }
-          break
-        case 'put':
-          if (!runner[1] && !path) {
-            path = await question(`${chalk.white('Enter the path to desired node to put raw data\n')}`)
-            info(`put ${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')} data `)
-          } else {
-            path = runner[1]
-          }
+      let runner = cmd.split(' ').map((x) => x.trim().toLocaleLowerCase())
+      let [command, opt, ...args] = runner
+      console.log(command, opt, args, '\n', runner)
 
-          if (runner[2] === ('--file' || '-f')) {
-            let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
-            let data = await read(process.cwd() + file)
-            console.log(process.cwd())
-            let patharr = path.split('/')
-            let name = patharr[patharr.length - 1]
-            //@ts-ignore
-            gun.vault(path).put(data, (data) => {
-              if (data.err) {
-                warn(data.err)
-              } else {
-                console.log(data)
-              }
-            })
-            await Run(path)
-          }
-          if (runner[2] === ('--url' || '-U')) {
-            let url = runner[3]
-
-            let data = await fetch(url)
-            //@ts-ignore
-            gun.vault(path).put(data, (data) => {
-              if (data.err) {
-                warn(data.err)
-              } else {
-                console.log(data)
-              }
-            })
-          }
-          if (runner[2] === ('--data' || '-d')) {
-            let data = runner[3]
-            let patharr = path.split('/')
-            let name = patharr[patharr.length - 1]
-            //@ts-ignore
-            gun.vault(path).put(data, (data) => {
-              if (data.err) {
-                warn(data.err)
-              } else {
-                console.log(data)
-              }
-            })
-          }
-
-          break
-        case 'peer':
-          //@ts-ignore
-          var peers = gun.back('opt.peers')
-          console.log('PEERS', peers)
-          //@ts-ignore
-          var mesh = gun.back('opt.mesh') // DAM
-          console.log('MESH', JSON.stringify(mesh))
-          // if (Array.isArray(peers)) {
-          //   peers.forEach((peer) => {
-          //     mesh.bye(peer);
-          //   });
-          // }
-          // mesh.bye(peers);
-
-          // mesh.say({
-          //   dam: 'opt',
-          //   opt: {
-          //     peers: typeof peers === 'string' ? peers : peers.map((peer) => peer),
-          //   },
-          // });
-          break
-        case 'dev':
-          let dev = runner[1]
-          try {
-            if (dev === 'push') {
-              let b = await $`yarn build`
-              console.log(b.stdout)
-              let push = await $`yarn push`
-              console.log(push.stdout)
-            }
-            if (dev === 'build') {
-              let b = await $`yarn build`
-              console.log(b.stdout)
-            }
-          } catch (error) {
-            err(error as string)
-          }
-
-          let exit = await question(`${chalk.white('Exit? (y/n)')}`)
-          if (exit === 'y') {
-            process.exit()
-          }
-          await Run(path ?? 'root')
-          break
-        case 'exit':
-          process.exit()
-        case 'serve':
-          break
-        default:
-          Help()
-          break
+      const chainlockerOpts = new Map([
+        [
+          'help',
+          async function (args: string[] = []) {
+            Help('chainlocker')
+          },
+        ],
+        [
+          'vault',
+          async function (args: string[] = []) {
+            await Vault(args, vault, gun)
+          },
+        ],
+        [
+          'store',
+          async function (args: string[] = []) {
+            let [key, value, ...flags] = args
+            await Store(args, vault, gun)
+          },
+        ],
+      ])
+      if (command === 'chainlocker') {
+        let run = chainlockerOpts.get(opt)
+        if (run) {
+          await run(args)
+        }
       }
-      await Run(path)
+      // switch (command) {
+      //   case 'chainlocker':
+
+      //     break
+      //   case 'get':
+      //     if (!runner[1] && !path) {
+      //       path = await question(`${chalk.white('Enter the path to desired node to retrieve raw data\n')}`)
+      //       info(`${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')}  `)
+      //     } else {
+      //       path = runner[1]
+      //     }
+      //     if (path) {
+      //       //@ts-ignore
+
+      //       await Run(path)
+      //     }
+      //     break
+      //   case 'put':
+      //     if (!runner[1] && !path) {
+      //       path = await question(`${chalk.white('Enter the path to desired node to put raw data\n')}`)
+      //       info(`put ${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')} data `)
+      //     } else {
+      //       path = runner[1]
+      //     }
+
+      //     if (runner[2] === ('--file' || '-f')) {
+      //       let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
+      //       let data = await read(process.cwd() + file)
+      //       console.log(process.cwd())
+      //       let patharr = path.split('/')
+      //       let name = patharr[patharr.length - 1]
+      //       //@ts-ignore
+      //       gun.vault(path).put(data, (data) => {
+      //         if (data.err) {
+      //           warn(data.err)
+      //         } else {
+      //           console.log(data)
+      //         }
+      //       })
+      //       await Run(path)
+      //     }
+      //     if (runner[2] === ('--url' || '-U')) {
+      //       let url = runner[3]
+
+      //       let data = await fetch(url)
+      //       //@ts-ignore
+      //       gun.vault(path).put(data, (data) => {
+      //         if (data.err) {
+      //           warn(data.err)
+      //         } else {
+      //           console.log(data)
+      //         }
+      //       })
+      //     }
+      //     if (runner[2] === ('--data' || '-d')) {
+      //       let data = runner[3]
+      //       let patharr = path.split('/')
+      //       let name = patharr[patharr.length - 1]
+      //       //@ts-ignore
+      //       gun.vault(path).put(data, (data) => {
+      //         if (data.err) {
+      //           warn(data.err)
+      //         } else {
+      //           console.log(data)
+      //         }
+      //       })
+      //     }
+
+      //     break
+
+      //   default:
+      //     Help()
+      //     break
+      // }
+      // await Run(path)
     }
   }
 }

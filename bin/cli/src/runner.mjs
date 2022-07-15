@@ -1,165 +1,110 @@
 'use strict'
 import Gun from 'gun'
-import { $, fetch, chalk, question } from 'zx'
-import { exists, read } from 'fsxx'
+import { chalk, question } from 'zx'
+import { exists } from 'fsxx'
 import { auth } from '../lib/auth.mjs'
-import { err, info, warn } from '../lib/debug.mjs'
+import { err } from '../lib/debug.mjs'
+import { interpretPath, mkdir } from '../lib/file-utils.mjs'
+import Vault from './commands/vault.mjs'
 import Help from '../lib/help.mjs'
 import '../lib/chain-hooks/chainlocker.mjs'
+import lzStr from 'lz-string'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
+import Store from './commands/store.mjs'
 const SEA = Gun.SEA
-export function validateKeys(gun, keys) {
+let config = {
+  MASTER_KEYS: process.env.MASTER_KEYS || {
+    pub: 'SECRETKEYS_PLEASECHANGE',
+    priv: '_PLEASE_CHANGE_THIS_KEY',
+    epub: '_OR_YOUWILLBEHACKED',
+    epriv: '_ONCEAGAIN_CHANGE!!!',
+  },
+  LockerDirectory: process.env.LOCKER_DIRECTORY || '.chainlocker',
+  DefaultVault: process.env.LOCKER_NAME || 'default',
+  defaultRootNode: process.env.DEFAULT_ROOT_NODE ?? 'root',
+  directoryPrefix: 'MoUQgg3gRAxgLlAXFA',
+}
+export const getLockerName = async (compressed) => {
+  compressed = config.directoryPrefix + compressed
+  let decompressed = lzStr.decompressFromEncodedURIComponent(compressed)
+  if (decompressed) {
+    return await Gun.SEA.decrypt(decompressed, config.MASTER_KEYS)
+  }
+  err('Failed to decrypt locker name. Check your master keys.')
+}
+let masterPair = await auth(config.MASTER_KEYS)
+export function validateKeys(keys = config.MASTER_KEYS) {
   return new Promise((resolve, reject) => {
-    gun.user().auth(keys, (ack) => {
-      let { err: err2, get, sea } = ack
-      if (err2) {
-        reject(err2)
-      } else {
-        resolve({ sea })
-      }
-    })
+    Gun()
+      .user()
+      .auth(keys, (ack) => {
+        let { err: err2, get, sea } = ack
+        if (err2) {
+          reject(err2)
+        } else {
+          resolve({ sea })
+        }
+      })
   })
 }
-let lockername = await question(chalk.white.bold('Enter desired vault name or choose a new name to create a new vault\n'))
-if (lockername) {
-  lockername = lockername.trim()
+if (!exists(config.LockerDirectory)) {
+  console.log(chalk.white.italic(`No vaults found in configured vault directory...Starting ChainLocker vault setup.`))
+  await mkdir(config.LockerDirectory)
 }
-Help()
-console.log('\n\n')
-await Run('root')
-export default async function Run(path = 'root') {
-  let keys = await auth(lockername)
-  let workedName = await SEA.work(lockername, keys, null, { name: 'SHA-256', length: 12 })
-  let $LOCKER_PATH = `${process.cwd()}/.chainlocker`
-  let gun, prevVault
+await Run('root', config.DefaultVault)
+export default async function Run(path = 'root-node', vault = config.DefaultVault) {
+  let keys = await auth(vault)
+  let secureVault = lzStr
+    .compressToEncodedURIComponent(await SEA.encrypt(vault, config.MASTER_KEYS.epriv))
+    .replace('MoUQgg3gRAxgLlAXFA', '')
+  let $LOCKER_PATH = interpretPath(config.LockerDirectory)
+  let gun
   try {
-    if (!exists(`${$LOCKER_PATH}/${lockername}`)) {
-      await $`mkdir -p ${$LOCKER_PATH}/${lockername}`
+    if (!exists(`${$LOCKER_PATH}/${secureVault}`)) {
+      await mkdir(config.LockerDirectory, secureVault)
     }
-    gun = new Gun({ file: `${$LOCKER_PATH}/${lockername}` })
-    gun.locker(lockername)
+    gun = new Gun({ file: interpretPath(config.LockerDirectory, secureVault) })
+    gun.locker(vault)
   } catch (error) {
     err(error)
   }
-  const check = {
-    async auth(keys2) {
-      try {
-        await validateKeys(gun, keys2)
-        return { valid: true, keys: keys2 }
-      } catch (error) {
-        err(`${error}
- INVALID KEYPAIR FOR ${lockername}`)
-        return { valid: false, keys: keys2 }
-      }
-    },
-  }
-  let cmd = await question(chalk.white(`Current Node \u2771 ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}   `))
+  let cmd = await question(chalk.white(`Current Node \u2771 ${chalk.red.bold('>>')}${path ?? 'root'}${chalk.red.bold('-->>')}  `))
   if (cmd) {
     cmd = cmd.trim()
     if (cmd) {
-      let runner = cmd.split(' ')
-      console.log(runner)
-      switch (runner[0]) {
-        case 'get':
-          if (!runner[1] && !path) {
-            path = await question(`${chalk.white('Enter the path to desired node to retrieve raw data\n')}`)
-            info(`get ${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')}  `)
-          } else {
-            path = runner[1]
-          }
-          if (path) {
-            gun.vault(path).value((data) => {
-              console.log(data)
-            })
-            await Run(path)
-          }
-          break
-        case 'put':
-          if (!runner[1] && !path) {
-            path = await question(`${chalk.white('Enter the path to desired node to put raw data\n')}`)
-            info(`put ${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')} data `)
-          } else {
-            path = runner[1]
-          }
-          if (runner[2] === '--file') {
-            let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
-            let data = await read(process.cwd() + file)
-            console.log(process.cwd())
-            let patharr = path.split('/')
-            let name = patharr[patharr.length - 1]
-            gun.vault(path).put(data, (data2) => {
-              if (data2.err) {
-                warn(data2.err)
-              } else {
-                console.log(data2)
-              }
-            })
-            await Run(path)
-          }
-          if (runner[2] === '--url') {
-            let url = runner[3]
-            let data = await fetch(url)
-            gun.vault(path).put(data, (data2) => {
-              if (data2.err) {
-                warn(data2.err)
-              } else {
-                console.log(data2)
-              }
-            })
-          }
-          if (runner[2] === '--data') {
-            let data = runner[3]
-            let patharr = path.split('/')
-            let name = patharr[patharr.length - 1]
-            gun.vault(path).put(data, (data2) => {
-              if (data2.err) {
-                warn(data2.err)
-              } else {
-                console.log(data2)
-              }
-            })
-          }
-          break
-        case 'peer':
-          var peers = gun.back('opt.peers')
-          console.log('PEERS', peers)
-          var mesh = gun.back('opt.mesh')
-          console.log('MESH', JSON.stringify(mesh))
-          break
-        case 'dev':
-          let dev = runner[1]
-          try {
-            if (dev === 'push') {
-              let b = await $`yarn build`
-              console.log(b.stdout)
-              let push = await $`yarn push`
-              console.log(push.stdout)
-            }
-            if (dev === 'build') {
-              let b = await $`yarn build`
-              console.log(b.stdout)
-            }
-          } catch (error) {
-            err(error)
-          }
-          let exit = await question(`${chalk.white('Exit? (y/n)')}`)
-          if (exit === 'y') {
-            process.exit()
-          }
-          await Run(path ?? 'root')
-          break
-        case 'exit':
-          process.exit()
-        case 'serve':
-          break
-        default:
-          Help()
-          break
+      let runner = cmd.split(' ').map((x) => x.trim().toLocaleLowerCase())
+      let [command, opt, ...args] = runner
+      console.log(command, opt, args, '\n', runner)
+      const chainlockerOpts = /* @__PURE__ */ new Map([
+        [
+          'help',
+          async function (args2 = []) {
+            Help('chainlocker')
+          },
+        ],
+        [
+          'vault',
+          async function (args2 = []) {
+            await Vault(args2, vault, gun)
+          },
+        ],
+        [
+          'store',
+          async function (args2 = []) {
+            let [key, value, ...flags] = args2
+            await Store(args2, vault, gun)
+          },
+        ],
+      ])
+      if (command === 'chainlocker') {
+        let run = chainlockerOpts.get(opt)
+        if (run) {
+          await run(args)
+        }
       }
-      await Run(path)
     }
   }
 }

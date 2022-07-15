@@ -30,10 +30,10 @@ export default async function FileUtils(readPath, writePath) {
   }
   return file
 }
-function interpretPath(args) {
-  return path.join($.cwd || process.cwd(), args ?? '')
+export function interpretPath(...args) {
+  return path.join($.cwd || process.cwd(), ...(args ?? ''))
 }
-const readDirectorySync = (directory, allFiles) => {
+export const readDirectorySync = (directory, allFiles = []) => {
   const files = fs.readdirSync(directory).map((file) => join(directory, file))
   allFiles.push(...files)
   files.forEach((file) => {
@@ -56,6 +56,10 @@ export async function read(path2, encoding) {
 read.sync = function (...args) {
   const path2 = interpretPath(args)
   return fs.readFileSync(path2, 'utf-8')
+}
+export async function mkdir(...path2) {
+  let input = interpretPath(...path2)
+  return fs.mkdir(input)
 }
 export async function write(path2, content) {
   return fs.writeFile(interpretPath(path2), content, 'utf-8')

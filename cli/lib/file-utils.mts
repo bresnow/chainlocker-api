@@ -31,11 +31,11 @@ export default async function FileUtils(readPath: string, writePath: string) {
   return file
 }
 
-function interpretPath(args?: string) {
-  return path.join($.cwd || process.cwd(), args ?? '')
+export function interpretPath(...args: string[]) {
+  return path.join($.cwd || process.cwd(), ...(args ?? ''))
 }
 
-const readDirectorySync = (directory: string, allFiles: string[]) => {
+export const readDirectorySync = (directory: string, allFiles: string[] = []) => {
   const files = fs.readdirSync(directory).map((file) => join(directory, file))
   allFiles.push(...files)
   files.forEach((file) => {
@@ -64,6 +64,10 @@ read.sync = function (...args: any) {
   return fs.readFileSync(path, 'utf-8')
 }
 
+export async function mkdir(...path: string[]) {
+  let input = interpretPath(...path)
+  return fs.mkdir(input)
+}
 export async function write(path: any, content: any) {
   return fs.writeFile(interpretPath(path), content, 'utf-8')
 }

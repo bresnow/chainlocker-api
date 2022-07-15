@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "start": "node bin/cli/src/index.mjs",
+    "start": "cross-env-shell NODE_ENV=production MASTER-KEYS=$MASTER-KEYS node bin/cli/src/index.mjs",
     "prettier": "prettier --write '**/*.{json,mjs,ts,mts}'",
     "push": "node scripts/push.mjs"
   },
