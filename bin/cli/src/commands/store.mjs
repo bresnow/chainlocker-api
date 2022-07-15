@@ -1,7 +1,8 @@
 'use strict'
-import { chalk, question } from 'zx'
+import { chalk, fetch, question } from 'zx'
 import Help from '../../lib/help.mjs'
 import { warn } from '../../lib/debug.mjs'
+import validJSON from '../../lib/checkIfValidJSON.mjs'
 import { read } from '../../lib/file-utils.mjs'
 import Run from '../runner.mjs'
 import '../../lib/chain-hooks/chainlocker.mjs'
@@ -26,8 +27,7 @@ export default async function (args = [], currentVault, gun) {
       })
       break
     case 'put':
-      let [flag, value2, ...continued] = flags
-      console.log(flags, 'flags')
+      let value2
       if (!value2) {
         value2 = await question(
           chalk.white.bold(`Enter value to store at path: ${nodepath} 
@@ -41,19 +41,32 @@ export default async function (args = [], currentVault, gun) {
           data = { stdin_data: value2, attributes: { run: false, env: 'shell', description: null } }
         }
         if (flags[i] === '--file') {
-          data = await read(flags[i])
           value2 = flags[i + 1]
+          data = await read(value2)
+          data = validJSON(data) ? validJSON(data) : data
           data = { file_data: value2, attributes: { run: false, env: 'html/js/css', description: null } }
+        }
+        if (flags[i] === '--url') {
+          let protocol = 'https://',
+            secure = true
+          for (let j = 0; j < flags[i + 1].length; j++) {
+            if (flags[j] === '--insecure') {
+              secure = false
+              protocol = 'http://'
+            }
+          }
+          let url = value2.startsWith(protocol) ? value2 : `${protocol}://${flags[i + 1]}`
+          data = await fetch(url)
+          data = { url_data: data, attributes: { run: false, env: 'html/js/css', description: null } }
         }
       }
       gun.vault(nodepath).put(data, async (data2) => {
         if (data2.err) {
           warn(data2.err)
-          return await Run(nodepath, currentVault)
         } else {
           console.log(data2)
-          return await Run(nodepath, currentVault)
         }
+        await Run(nodepath, currentVault)
       })
       break
     default:

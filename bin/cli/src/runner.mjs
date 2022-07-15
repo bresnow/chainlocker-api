@@ -19,8 +19,9 @@ export const getLockerName = async (compressed) => {
   let decompressed = lzStr.decompressFromUTF16(compressed)
   if (decompressed) {
     return await Gun.SEA.decrypt(decompressed, MASTER_KEYS)
+  } else {
+    err('Failed to decrypt locker name. Check your master keys.')
   }
-  err('Failed to decrypt locker name. Check your master keys.')
 }
 export function validateKeys(keys = MASTER_KEYS) {
   return new Promise((resolve, reject) => {

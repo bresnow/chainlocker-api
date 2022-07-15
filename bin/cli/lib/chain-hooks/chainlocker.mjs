@@ -5,6 +5,7 @@ import lz from '../lz-encrypt.mjs'
 import lzString from 'lz-string'
 import { lzObject } from 'lz-object'
 import { exists, read } from '../file-utils.mjs'
+import { warn } from '../debug.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
@@ -24,30 +25,22 @@ Gun.chain.locker = async function (lockerName) {
   _gun.vault = (path) => {
     let node = user.path(path)
     return {
-      async put(data, cb22) {
+      async put(data, cb2) {
         console.log('put', data)
         data = await lz.encrypt(data, keys)
-        node.put(data, cb22)
+        node.put(data, cb2)
+        node.once((data2) => console.log('TEST', data2))
       },
       async value(cb) {
-        node.once(async (data) => {
+        node.load(async (data) => {
           let obj
           if (!data) {
             return cb('Record not found')
+          } else {
+            obj = await lz.decrypt(data, keys)
+            cb(obj)
           }
-          return cb(data)
         })
-      },
-      async uint8Press(data) {
-        if (typeof data === 'object') {
-          data = await lz.encrypt(data, keys)
-        }
-        if (typeof data === 'string') {
-          data = await SEA.encrypt(data, keys)
-          data = lzObject.compress({ data }, { output: 'uint8array' })
-        }
-        node.put(data, cb2)
-        node.once((data2) => console.log('TEST', data2))
       },
     }
   }

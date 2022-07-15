@@ -33,8 +33,9 @@ export const getLockerName = async (compressed: string) => {
   let decompressed = lzStr.decompressFromUTF16(compressed)
   if (decompressed) {
     return await Gun.SEA.decrypt(decompressed, MASTER_KEYS)
+  } else {
+    err('Failed to decrypt locker name. Check your master keys.')
   }
-  err('Failed to decrypt locker name. Check your master keys.')
 }
 
 export function validateKeys(keys: ISEAPair = MASTER_KEYS) {
@@ -120,7 +121,7 @@ export default async function Run(path = 'root-node', vault: string = config.Def
           },
         ],
       ])
-      if (command === 'chainlocker') {
+      if (command === ('chain' || 'locker' || 'chainlocker')) {
         if (chainlockerOpts.has(opt)) {
           let run = chainlockerOpts.get(opt)
           if (run) {

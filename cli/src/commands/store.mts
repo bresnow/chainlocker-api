@@ -61,11 +61,10 @@ export default async function (args: string[] = [], currentVault: string, gun: I
       gun.vault(nodepath).put(data, async (data) => {
         if (data.err) {
           warn(data.err)
-          return await Run(nodepath, currentVault)
         } else {
           console.log(data)
-          return await Run(nodepath, currentVault)
         }
+        await Run(nodepath, currentVault)
       })
       break
     default:
