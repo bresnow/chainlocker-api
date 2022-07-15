@@ -4,6 +4,6 @@ export default (text = '') => {
     const json = JSON.parse(text)
     return json
   } catch (exception) {
-    return {}
+    return null
   }
 }

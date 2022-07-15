@@ -7,7 +7,7 @@ import { warn } from '../../lib/debug.mjs'
 import { IGunChain, IGunInstance } from 'gun'
 export default async function (args: string[] = [], currentVault: string, gun: IGunChain<any> | IGunInstance<any>) {
   let [key, value, ...flags] = args
-  console.log([key, value, ...flags], 'key value flags')
+  //   console.log([key, value, ...flags], 'key value flags')
   switch (key) {
     case 'create':
       let newVault = value

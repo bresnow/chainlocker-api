@@ -1,23 +1,20 @@
 import Gun, { IGunInstance, ISEAPair } from 'gun'
-import { $, fetch, glob, chalk, question } from 'zx'
-import { checkIfThis } from '../lib/check.mjs'
-import { exists, read, write } from 'fsxx'
-import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
-import { err, info, warn } from '../lib/debug.mjs'
-import { interpretPath, mkdir, readDirectorySync } from '../lib/file-utils.mjs'
+import { $, chalk, question } from 'zx'
+import { exists } from 'fsxx'
+import { auth } from '../lib/auth.mjs'
+import { err, warn } from '../lib/debug.mjs'
 import Vault from './commands/vault.mjs'
 import Help from '../lib/help.mjs'
 import '../lib/chain-hooks/chainlocker.mjs'
 import Push from '../lib/dev/push.mjs'
 import Build from '../lib/dev/build.mjs'
 import lzStr from 'lz-string'
-import getArgs from '../lib/arg.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
 import Store from './commands/store.mjs'
-import Pair from '../lib/encryption/pair.mjs'
+import config from '../../config/index.mjs'
 const SEA = Gun.SEA
 
 /**
@@ -29,17 +26,6 @@ const SEA = Gun.SEA
  * returns $LOCKER_PATH the path to the locker directory
  */
 
-let config: {
-  LockerDirectory: string
-  DefaultVault: string
-  defaultRootNode: string
-  directoryPrefix: string
-} = {
-  LockerDirectory: process.env.LOCKER_DIRECTORY || '.chainlocker',
-  DefaultVault: process.env.LOCKER_NAME || 'default',
-  defaultRootNode: process.env.DEFAULT_ROOT_NODE ?? 'root',
-  directoryPrefix: 'MoUQgg3gRAxgLlAXFA',
-}
 let MASTER_KEYS = (await auth(config.DefaultVault)) as ISEAPair
 export const getLockerName = async (compressed: string) => {
   let decompressed = lzStr.decompressFromEncodedURIComponent(compressed)
@@ -63,23 +49,19 @@ export function validateKeys(keys: ISEAPair = MASTER_KEYS) {
       })
   })
 }
-if (!exists(config.LockerDirectory)) {
-  console.log(chalk.white.italic(`No vaults found in configured vault directory...Starting ChainLocker vault setup.`))
-  await mkdir(config.LockerDirectory)
-}
-
-await Run('root', config.DefaultVault)
+await Run()
 export default async function Run(path = 'root-node', vault: string = config.DefaultVault) {
   let keys = await auth(vault)
   let secureVault = lzStr.compressToEncodedURIComponent(await SEA.encrypt(vault, await auth(config.DefaultVault)))
-  let $LOCKER_PATH = interpretPath(config.LockerDirectory)
+  let $LOCKER_PATH = config.LockerDirectory + '/' + secureVault
   let gun: IGunInstance<any>
 
   try {
-    if (!exists(`${$LOCKER_PATH}/${secureVault}`)) {
-      await mkdir(config.LockerDirectory, secureVault)
+    if (!exists($LOCKER_PATH)) {
+      console.log(chalk.white.italic(`New vault setup.`))
+      await $`mkdir -p ${$LOCKER_PATH}`
     }
-    gun = new Gun({ file: interpretPath(config.LockerDirectory, secureVault) })
+    gun = new Gun({ file: `${$LOCKER_PATH}` })
     //@ts-ignore
     gun.locker(vault)
   } catch (error) {
@@ -92,12 +74,13 @@ export default async function Run(path = 'root-node', vault: string = config.Def
     if (cmd) {
       let runner = cmd.split(' ').map((x) => x.trim().toLocaleLowerCase())
       let [command, opt, ...args] = runner
-      console.log(command, opt, args, '\n', runner)
+      // console.log(command, opt, args, '\n', runner)
 
       const chainlockerOpts = new Map([
         [
           'help',
-          async function (args: string[] = []) {
+          async function (_args: string[] = []) {
+            //TODO: finish help
             Help('chainlocker')
           },
         ],
@@ -110,92 +93,54 @@ export default async function Run(path = 'root-node', vault: string = config.Def
         [
           'store',
           async function (args: string[] = []) {
-            let [key, value, ...flags] = args
             await Store(args, vault, gun)
+          },
+        ],
+        // DEVELOPER COMMANDS
+        [
+          'dev',
+          async function (args: string[] = []) {
+            let [key, value, ...flags] = args
+            if (key === 'push') {
+              console.log(chalk.white.italic(`Pushing to github...`))
+              try {
+                await Build()
+                await Push()
+              } catch (error) {
+                err(error as string)
+              }
+            }
+            if (key === 'build') {
+              console.log(chalk.white.italic(`Building...`))
+              await Build()
+            }
           },
         ],
       ])
       if (command === 'chainlocker') {
-        let run = chainlockerOpts.get(opt)
-        if (run) {
-          await run(args)
+        if (chainlockerOpts.has(opt)) {
+          let run = chainlockerOpts.get(opt)
+          if (run) {
+            await run(args)
+          }
+        } else {
+          err(`${opt} is not a valid command.`)
+          Help('chainlocker')
         }
       }
-      // switch (command) {
-      //   case 'chainlocker':
-
-      //     break
-      //   case 'get':
-      //     if (!runner[1] && !path) {
-      //       path = await question(`${chalk.white('Enter the path to desired node to retrieve raw data\n')}`)
-      //       info(`${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')}  `)
-      //     } else {
-      //       path = runner[1]
-      //     }
-      //     if (path) {
-      //       //@ts-ignore
-
-      //       await Run(path)
-      //     }
-      //     break
-      //   case 'put':
-      //     if (!runner[1] && !path) {
-      //       path = await question(`${chalk.white('Enter the path to desired node to put raw data\n')}`)
-      //       info(`put ${chalk.red.bold('>>--')}path/to/desired/node${chalk.red.bold('-->>')} data `)
-      //     } else {
-      //       path = runner[1]
-      //     }
-
-      //     if (runner[2] === ('--file' || '-f')) {
-      //       let file = runner[3].startsWith('/') ? `${runner[3]}` : `${process.cwd()}/${runner[3]}`
-      //       let data = await read(process.cwd() + file)
-      //       console.log(process.cwd())
-      //       let patharr = path.split('/')
-      //       let name = patharr[patharr.length - 1]
-      //       //@ts-ignore
-      //       gun.vault(path).put(data, (data) => {
-      //         if (data.err) {
-      //           warn(data.err)
-      //         } else {
-      //           console.log(data)
-      //         }
-      //       })
-      //       await Run(path)
-      //     }
-      //     if (runner[2] === ('--url' || '-U')) {
-      //       let url = runner[3]
-
-      //       let data = await fetch(url)
-      //       //@ts-ignore
-      //       gun.vault(path).put(data, (data) => {
-      //         if (data.err) {
-      //           warn(data.err)
-      //         } else {
-      //           console.log(data)
-      //         }
-      //       })
-      //     }
-      //     if (runner[2] === ('--data' || '-d')) {
-      //       let data = runner[3]
-      //       let patharr = path.split('/')
-      //       let name = patharr[patharr.length - 1]
-      //       //@ts-ignore
-      //       gun.vault(path).put(data, (data) => {
-      //         if (data.err) {
-      //           warn(data.err)
-      //         } else {
-      //           console.log(data)
-      //         }
-      //       })
-      //     }
-
-      //     break
-
-      //   default:
-      //     Help()
-      //     break
-      // }
-      // await Run(path)
+      if (command === ('exit' || 'quit')) {
+        let confirm = await question(chalk.white(`Are you sure you want to exit? (y/N)`))
+        if (confirm === 'y' && opt !== '--force') {
+          console.log(chalk.white.italic(`Pushing to github before exit...`))
+          await Push()
+          process.exit(0)
+        }
+        if (confirm === 'y' && opt === '--force') {
+          process.exit(0)
+        }
+        warn('Aborting exit.')
+        await Run()
+      }
     }
   }
 }

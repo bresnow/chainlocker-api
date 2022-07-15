@@ -7,7 +7,6 @@ import { readDirectorySync } from '../../lib/file-utils.mjs'
 import { warn } from '../../lib/debug.mjs'
 export default async function (args = [], currentVault, gun) {
   let [key, value, ...flags] = args
-  console.log([key, value, ...flags], 'key value flags')
   switch (key) {
     case 'create':
       let newVault = value
