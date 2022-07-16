@@ -1,5 +1,5 @@
 import Gun, { GunSchema, IGunChain, IGunInstance, IGunInstanceRoot, IGunUserInstance, ISEAPair } from 'gun'
-import { SysUserPair, getImmutableMachineInfo, MASTER_KEYS, MASTER_SERIAL } from '../auth.mjs'
+import { SysUserPair, MASTER_KEYS, MASTER_SERIAL } from '../auth.mjs'
 import lz from '../lz-encrypt.mjs'
 import lzString from 'lz-string'
 import { lzObject } from 'lz-object'
@@ -20,12 +20,14 @@ declare module 'gun/types' {
      * Should require sudo privilages to create a new vault.
      *
      */
-    vault(vaultname: string, options?: { keys: ISEAPair }): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
+    vault(vaultname: string, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
     locker(nodepath: string | string[]): { value(cb: CallBack): Promise<void>; put(data: any, cb: CallBack): Promise<void> }
-    keys(secret: string): Promise<ISEAPair>
+    keys(secret?: string): Promise<ISEAPair>
   }
 }
+
 export type CallBack = (...ack: any) => void
+export type VaultOpts = { keys: ISEAPair }
 
 Gun.chain.vault = function (vault, opts) {
   let _gun = this
@@ -33,13 +35,22 @@ Gun.chain.vault = function (vault, opts) {
   let keys = opts?.keys || MASTER_KEYS // can use the master key made from the machine serial or bring your own keys
   gun.auth(keys, (ack: any) => {
     if (!ack.err) {
-      gun.get(`CHAINLOCKER/${vault}`).put({ last_authorization: new Date().toLocaleDateString() })
+      let vnode = gun.get(`CHAINLOCKER`)
+      vnode.once(async (data) => {
+        let cID = (await Gun.SEA.work(vault, keys)) as string
+        gun.opt({ file: `${config.radDir}/.${cID}.json}` })
+        let now = new Date(Date.now()).toLocaleDateString()
+        if (!data) {
+          vnode.get(cID).put({ vault, created: now })
+        }
+        vnode.get(cID).get('last_auth').put({ last_auth: now })
+      })
     } else {
       console.error(ack.err)
     }
   })
 
-  _gun.keys = async function (secret: string | string[]) {
+  _gun.keys = async function (secret?: string | string[]) {
     // can add secret string, username and password, or an array of secret strings
     let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
     return keys

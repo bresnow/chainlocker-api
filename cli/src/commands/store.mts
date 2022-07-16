@@ -5,7 +5,7 @@ import Help from '../../lib/help.mjs'
 import { warn } from '../../lib/debug.mjs'
 import validJSON from '../../lib/checkIfValidJSON.mjs'
 import { read, readDirectorySync, interpretPath } from '../../lib/file-utils.mjs'
-import Run from '../runner.mjs'
+
 import '../../lib/chain-hooks/chainlocker.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
@@ -23,7 +23,6 @@ export default async function (args: string[] = [], currentVault: string, gun: I
       //@ts-ignore
       gun.vault(nodepath).value(async (data) => {
         console.log(data)
-        await Run(nodepath, currentVault)
       })
       break
     case 'put':
@@ -62,7 +61,6 @@ export default async function (args: string[] = [], currentVault: string, gun: I
         } else {
           console.log(data)
         }
-        await Run(nodepath, currentVault)
       })
       break
     default:
