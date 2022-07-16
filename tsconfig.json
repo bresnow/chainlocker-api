@@ -19,6 +19,6 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.mts", "cli/src/run.mjs", "cli/lib/dev/push.mjs"],
+  "include": ["**/*.mts", "cli/src/run.mjs", "cli/lib/dev/push.mjs", "cli/lib/gun/gun.ts"],
   "exclude": ["node_modules", "bin"]
 }

@@ -1,7 +1,7 @@
 import Gun, { IGunInstance, ISEAPair } from 'gun'
-import { $, chalk, question } from 'zx'
+import { $, chalk, question, argv } from 'zx'
 import { exists } from 'fsxx'
-import { auth, getImmutableMachineInfo } from '../lib/auth.mjs'
+import { SysUserPair, getImmutableMachineInfo } from '../lib/auth.mjs'
 import { err, warn } from '../lib/debug.mjs'
 import Vault from './commands/vault.mjs'
 import Help from '../lib/help.mjs'
@@ -52,18 +52,23 @@ export function validateKeys(keys: ISEAPair = MASTER_KEYS) {
       })
   })
 }
-await Run()
-export default async function Run(path = 'root-node', vault: string = config.DefaultVault) {
-  let keys = await auth(vault)
+let vault = argv.vault
+let locker = argv.locker
+let nodepath = argv.node ?? argv.nodepath ?? argv.path
+await Run(nodepath, vault)
+export default async function Run(path = 'root-node', vault: string = config.defaultVault) {
+  let keys = await SysUserPair()
   let worked = (await SEA.work(vault, MASTER_KEYS)) as string
   let secureVault = lzStr.compressToUTF16(worked)
-  let $LOCKER_PATH = config.LockerDirectory + '/' + secureVault
+  let $LOCKER_PATH = config.lockerDirectory + '/' + secureVault
   let gun: IGunInstance<any>
 
   try {
     if (!exists($LOCKER_PATH)) {
-      console.log(chalk.white.italic(`New vault setup.`))
+      console.log(chalk.white.italic(`New vault setup. Creating ${vault}`))
       await $`mkdir -p ${$LOCKER_PATH}`
+    } else {
+      console.log(chalk.white.italic(`Opening ${vault}`))
     }
     gun = new Gun({ file: `${$LOCKER_PATH}` })
     //@ts-ignore
@@ -121,30 +126,30 @@ export default async function Run(path = 'root-node', vault: string = config.Def
           },
         ],
       ])
-      if (command === ('chain' || 'locker' || 'chainlocker')) {
-        if (chainlockerOpts.has(opt)) {
-          let run = chainlockerOpts.get(opt)
-          if (run) {
-            await run(args)
-          }
-        } else {
-          err(`${opt} is not a valid command.`)
-          Help('chainlocker')
+
+      if (chainlockerOpts.has(opt)) {
+        let run = chainlockerOpts.get(opt)
+        if (run) {
+          await run(args)
         }
-      }
-      if (command === ('exit' || 'quit')) {
-        let confirm = await question(chalk.white(`Are you sure you want to exit? (y/N)`))
-        if (confirm === 'y' && opt !== '--force') {
-          console.log(chalk.white.italic(`Pushing to github before exit...`))
-          await Push()
-          process.exit(0)
-        }
-        if (confirm === 'y' && opt === '--force') {
-          process.exit(0)
-        }
-        warn('Aborting exit.')
-        await Run()
+      } else {
+        err(`${opt} is not a valid command.`)
+        Help('chainlocker')
       }
     }
+    //     if (command === ('exit' || 'quit')) {
+    //       let confirm = await question(chalk.white(`Are you sure you want to exit? (y/N)`))
+    //       if (confirm === 'y' && opt !== '--force') {
+    //         console.log(chalk.white.italic(`Pushing to github before exit...`))
+    //         await Push()
+    //         process.exit(0)
+    //       }
+    //       if (confirm === 'y' && opt === '--force') {
+    //         process.exit(0)
+    //       }
+    //       warn('Aborting exit.')
+    //       await Run()
+    //     }
+    //   }
   }
 }

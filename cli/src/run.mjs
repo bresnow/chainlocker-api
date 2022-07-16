@@ -1,4 +1,4 @@
-import Gun from 'gun'
+import Gun from '../gun/index.mjs'
 import { $, fetch, glob, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
 import { exists, read, write } from 'fsxx'

@@ -3,7 +3,7 @@ import { lzObject } from 'lz-object'
 import lzString from 'lz-string'
 import { checkIfThis } from './check.mjs'
 import { err, info } from './debug.mjs'
-import Gun from 'gun'
+import Gun from '../gun/index.mjs'
 /**
  *
  * LZ-Encrypt uses the sea algorith to encrypt/decrypt and compress/decompresswith lz-string.

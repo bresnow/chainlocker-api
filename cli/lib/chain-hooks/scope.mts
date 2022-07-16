@@ -1,5 +1,5 @@
 //@ts-nocheck
-import Gun from 'gun'
+import Gun from '../gun/index.mjs'
 
 import chokidar from 'chokidar'
 import fs from 'fs'

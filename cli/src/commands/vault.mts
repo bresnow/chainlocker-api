@@ -20,13 +20,13 @@ export default async function (args: string[] = [], currentVault: string, gun: I
       await Run(config.defaultRootNode, newVault)
       break
     case 'list':
-      let vdir = readDirectorySync(config.LockerDirectory)
+      let vdir = readDirectorySync(config.lockerDirectory)
       console.log(vdir)
       vdir.forEach(async (v) => {
         if (!v) {
           warn("No vaults found. Try the 'chainlocker create' command to create a new vault.")
         }
-        let [parent, goods] = v.split(config.LockerDirectory)
+        let [parent, goods] = v.split(config.lockerDirectory)
         console.log(chalk.italic.blueBright(goods))
         console.log(chalk.italic.blueBright(`${await getLockerName(goods)}`))
       })
@@ -53,8 +53,8 @@ export default async function (args: string[] = [], currentVault: string, gun: I
       )
       if (confirm.trim() === currentVault.toUpperCase()) {
         console.log(chalk.italic.white(`Deleting ${currentVault}`))
-        await remove(config.LockerDirectory + currentVault)
-        await Run(config.defaultRootNode, config.DefaultVault)
+        await remove(config.lockerDirectory + currentVault)
+        await Run(config.defaultRootNode, config.defaultVault)
       } else {
         warn('Aborting vault deletion.')
         await Run(config.defaultRootNode, currentVault)

@@ -28,9 +28,6 @@ export default async function (args: string[] = [], currentVault: string, gun: I
       break
     case 'put':
       let value
-      if (!value) {
-        value = await question(chalk.white.bold(`Enter value to store at path: ${nodepath} \n  ❱`))
-      }
       let data
       for (let i = 0; i < flags.length; i++) {
         if (flags[i] === '--stdin') {
@@ -40,10 +37,11 @@ export default async function (args: string[] = [], currentVault: string, gun: I
         if (flags[i] === ('--file' || '-f')) {
           value = flags[i + 1]
           data = await read(value)
-          data = validJSON(data) ? validJSON(data) : data
-          data = { file_data: value, attributes: { run: false, env: 'html/js/css', description: null } }
+          data = JSON.stringify(data)
+          data = { file_data: data, attributes: { run: false, env: 'html/js/css', description: null } }
         }
         if (flags[i] === ('--url' || '-U')) {
+          value = flags[i + 1]
           let protocol = 'https://',
             secure = true
           for (let j = 0; j < flags[i + 1].length; j++) {
