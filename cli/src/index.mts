@@ -32,7 +32,7 @@ if (vaultname) {
   }
   gun = Gun({ file: `${config.radDir}/${cID}` })
 
-  gun.vault(vaultname)
+  gun.vault(vaultname, { keys: keypair })
   let lock = gun.locker('test/a/rooonie')
   lock.put({ test: 'ICKLE' }, (data) => {
     if (data.err) {

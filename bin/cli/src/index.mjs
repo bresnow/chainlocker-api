@@ -9,7 +9,7 @@ import { MASTER_KEYS, SysUserPair } from '../lib/auth.mjs'
 import lzString from 'lz-string'
 let gun
 let [vault, vaultname] = findArg('vault')
-if (!vault) {
+if (!vault || !vaultname) {
   vaultname = await question(
     chalk.white.bold(`Enter desired vault name 
   \u2771  `)
@@ -36,9 +36,9 @@ if (vaultname) {
     mkdir(`${config.radDir}/${cID}`)
   }
   gun = Gun({ file: `${config.radDir}/${cID}` })
-  gun.vault(vaultname)
+  gun.vault(vaultname, { keys: keypair })
   let lock = gun.locker('test/a/rooonie')
-  lock.put({ tes: 'ICKLE' }, (data) => {
+  lock.put({ test: 'ICKLE' }, (data) => {
     if (data.err) {
       console.log(data.err)
     }
