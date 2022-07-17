@@ -3,7 +3,7 @@ import { lzObject } from 'lz-object'
 import lzString from 'lz-string'
 import { checkIfThis } from './check.mjs'
 import { err } from './debug.mjs'
-import Gun from '../gun/index.mjs'
+import Gun from 'gun'
 async function encrypt(object, encryptionkey, compressionOptions) {
   let compressionType = compressionOptions?.encoding ?? 'utf16'
   let compress

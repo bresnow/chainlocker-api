@@ -17,13 +17,13 @@ export default async function (args = [], currentVault, gun) {
       )
       break
     case 'list':
-      let vdir = readDirectorySync(config.lockerDirectory)
+      let vdir = readDirectorySync(config.radDir)
       console.log(vdir)
       vdir.forEach(async (v) => {
         if (!v) {
           warn("No vaults found. Try the 'chainlocker create' command to create a new vault.")
         }
-        let [parent, goods] = v.split(config.lockerDirectory)
+        let [parent, goods] = v.split(config.radDir)
         console.log(chalk.italic.blueBright(goods))
       })
       break
@@ -47,7 +47,7 @@ export default async function (args = [], currentVault, gun) {
       )
       if (confirm.trim() === currentVault.toUpperCase()) {
         console.log(chalk.italic.white(`Deleting ${currentVault}`))
-        await remove(config.lockerDirectory + currentVault)
+        await remove(config.radDir + currentVault)
       } else {
         warn('Aborting vault deletion.')
       }

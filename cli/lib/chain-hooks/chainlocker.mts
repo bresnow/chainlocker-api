@@ -38,7 +38,6 @@ Gun.chain.vault = function (vault, opts) {
       let vnode = gun.get(`CHAINLOCKER`)
       vnode.once(async (data) => {
         let cID = (await Gun.SEA.work(vault, keys)) as string
-        gun.opt({ file: `${config.radDir}/.${cID}.json}` })
         let now = new Date(Date.now()).toLocaleDateString()
         if (!data) {
           vnode.get(cID).put({ vault, created: now })

@@ -1,5 +1,5 @@
 'use strict'
-import Gun from '../gun/index.mjs'
+import Gun from 'gun'
 import chokidar from 'chokidar'
 import fs from 'fs'
 import { glob, chalk } from 'zx'

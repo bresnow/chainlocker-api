@@ -1,5 +1,5 @@
 'use strict'
-import Gun from '../gun/index.mjs'
+import Gun from 'gun'
 import { $, fetch, glob, chalk, question } from 'zx'
 import { checkIfThis } from '../lib/check.mjs'
 import { exists, read, write } from 'fsxx'
