@@ -11,7 +11,6 @@ switch (os.platform()) {
     break
   case 'darwin':
     sn = await $`system_profiler SPHardwareDataType | grep "Serial"`
-    console.log(sn.stdout)
     break
   case 'linux':
     if (os.arch() === 'arm') {

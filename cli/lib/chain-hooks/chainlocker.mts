@@ -4,7 +4,7 @@ import lz from '../lz-encrypt.mjs'
 import lzString from 'lz-string'
 import { lzObject } from 'lz-object'
 import { exists, interpretPath, read } from '../file-utils.mjs'
-import { warn } from '../debug.mjs'
+import { err, warn } from '../debug.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
@@ -27,7 +27,7 @@ declare module 'gun/types' {
 }
 
 export type CallBack = (...ack: any) => void
-export type VaultOpts = { keys: ISEAPair }
+export type VaultOpts = { keys: ISEAPair; encoding?: 'utf16' | 'uint8array' | 'base64' | 'uri' }
 
 Gun.chain.vault = function (vault, opts) {
   let _gun = this
@@ -78,8 +78,12 @@ Gun.chain.vault = function (vault, opts) {
     let node = temp
     return {
       async put(data, cb2) {
-        data = await lz.encrypt(data, keys)
-        node.put(data, cb2)
+        if (typeof data !== 'object') {
+          err('data must be an object')
+        } else {
+          data = await lz.encrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+          node.put(data, cb2)
+        }
       },
       async value(cb) {
         node.load(async (data: any) => {
@@ -87,7 +91,7 @@ Gun.chain.vault = function (vault, opts) {
           if (!data) {
             return cb({ err: 'Record not found' })
           } else {
-            obj = await lz.decrypt(data, keys)
+            obj = await lz.decrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
             cb(obj)
           }
         })

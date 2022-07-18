@@ -7,8 +7,9 @@ import { findArg } from '../lib/arg.mjs'
 import config from '../../config/index.mjs'
 import { MASTER_KEYS, SysUserPair } from '../lib/auth.mjs'
 import lzString from 'lz-string'
+export const getCID = async (vaultname2, keypair) => lzString.compressToEncodedURIComponent(await Gun.SEA.work(vaultname2, keypair))
 let gun
-let [vault, vaultname] = findArg('vault')
+let [vault, vaultname] = findArg('vault', { dash: false })
 if (!vault || !vaultname) {
   vaultname = await question(
     chalk.white.bold(`Enter desired vault name 
@@ -18,7 +19,7 @@ if (!vault || !vaultname) {
 if (vaultname) {
   let keypair = MASTER_KEYS,
     cID
-  let [pair, salt] = findArg('pair', 2, { dash: true })
+  let [pair, salt] = findArg('pair', { dash: true })
   if (pair) {
     if (!salt) {
       salt = await question(
@@ -31,7 +32,7 @@ if (vaultname) {
       keypair = keys
     }
   }
-  cID = lzString.compressToEncodedURIComponent(await Gun.SEA.work(vaultname, keypair))
+  cID = await getCID(vaultname, keypair)
   if (!exists(config.radDir + `${cID}`)) {
     mkdir(`${config.radDir}/${cID}`)
   }
