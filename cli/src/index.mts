@@ -1,18 +1,20 @@
 import { question, chalk, argv, sleep } from 'zx'
 import { exists, mkdir, read } from '../lib/file-utils.mjs'
-import Gun from 'gun'
+import Gun, { ISEAPair } from 'gun'
 import Help from '../lib/help.mjs'
 import fs from 'fs-extra'
 import '../lib/chain-hooks/chainlocker.mjs'
 import { findArg, findParsed as filterParsedArgs, findParsed } from '../lib/arg.mjs'
 import config from '../../config/index.mjs'
 import { MASTER_KEYS } from '../lib/auth.mjs'
-import { getCID } from '../lib/chain-hooks/chainlocker.mjs'
+
 import { warn } from '../lib/debug.mjs'
+import lzString from 'lz-string'
 const caret = chalk.green.bold('\n❱ ')
 
-let gun,
-  hasSalt = false
+export const getCID = async (vaultname: string, keypair: ISEAPair) =>
+  lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)) as string)
+let hasSalt = false
 let [vault, vaultname] = findArg('vault', { dash: false })
 if (!vault) {
   vaultname = await question(chalk.white.bold(`Enter desired vault name${caret}`))
@@ -46,11 +48,11 @@ if (vaultname && typeof vaultname === 'string') {
     await sleep(3000)
     mkdir(`${config.radDir}/${cID}`)
   }
-  gun = Gun({ file: `${config.radDir}/${cID}` })
+  let gun = Gun({ file: `${config.radDir}/${cID}` })
   if (hasSalt && typeof salt === 'string') {
     keypair = await gun.keys([vaultname, salt])
   }
-  gun = gun.vault(vaultname, undefined, { keys: keypair })
+
   let [action, ...actionOpts] = findArg('store', { dash: false, valueIsArray: true })
   let [actionf, ...actionOptsf] = findArg('fetch', { dash: false, valueIsArray: true })
   if (actionf) {
@@ -89,25 +91,81 @@ if (vaultname && typeof vaultname === 'string') {
         nodepath.push(arrItr[i] as string)
       }
     }
-    console.log('NODEPATH', nodepath)
+    console.log('NODEPATH', nodepath.join('/'))
     console.log(chalk.green(`${vaultname} ❱❱❱--${nodepath.join(' ❱ ')}--❱❱`))
-    let locker = gun.locker(nodepath)
+    // let lock = gun.locker('test/a/rooonie')
+    // lock.put({ test: 'ICKLE' }, (data) => {
+    //   if (data.err) {
+    //     console.log(data.err)
+    //   }
+    // })
+    // lock.value((data) => {
+    //   console.log(data)
+    // })
 
+    gun.vault(vaultname, { keys: keypair })
     if (action === 'fetch') {
+      let locker = gun.locker(nodepath.join('/'))
       locker.value((data) => {
         console.log(data)
       })
     }
+    let locker = gun.locker(nodepath.join('/'))
+    locker.put(
+      {
+        type: 'stdin',
+        data: 'kjahfkjshfslkdjflksjdlfkjslkfjsdlkfjskdjflasdkjflk',
+        auth: cID,
+      },
+      (data) => {
+        if (data.err) {
+          console.log(chalk.red(data.err))
+        }
+        console.log(data)
+      }
+    )
+    locker.value((data) => {
+      console.log('Datattatata', data)
+    })
     if (action === 'store') {
       let input
       const actions = new Map([
         [
-          'stdin' || '0',
+          'stdin',
           async (input: string) => {
+            let locker = gun.locker(nodepath.join('/'))
             locker.put(
               {
                 type: 'stdin',
                 data: input,
+                auth: cID,
+              },
+              (data) => {
+                if (data.err) {
+                  console.log(chalk.red(data.err))
+                }
+                console.log(data)
+              }
+            )
+            locker.value((data) => {
+              console.log('Datattatata', data)
+            })
+          },
+        ],
+        [
+          'file',
+          async (input: string) => {
+            let locker = gun.locker(nodepath.join('/'))
+            let _input = await read(input, 'utf-8')
+            console.log(chalk.green(`${input} ❱❱❱❱ \n${_input}`))
+            locker.put(
+              {
+                type: 'file',
+                data: {
+                  encoding: 'utf-8',
+                  local_path: input,
+                  file_data: _input,
+                },
                 auth: cID,
               },
               (data) => {
@@ -122,37 +180,9 @@ if (vaultname && typeof vaultname === 'string') {
           },
         ],
         [
-          'file' || '1',
+          'url',
           async (input: string) => {
-            let { isFile, size } = await fs.stat(input)
-            if (isFile()) {
-              let _input = await read(input, 'utf-8')
-              console.log(chalk.green(`${input} ❱❱❱❱ ${size} bytes\n${_input}`))
-              locker.put(
-                {
-                  type: 'file',
-                  data: {
-                    encoding: 'utf-8',
-                    local_path: input,
-                    file_data: _input,
-                  },
-                  auth: cID,
-                },
-                (data) => {
-                  if (data.err) {
-                    console.log(chalk.red(data.err))
-                  }
-                }
-              )
-              locker.value((data) => {
-                console.log('Datattatata', data)
-              })
-            }
-          },
-        ],
-        [
-          'url' || '2',
-          async (input: string) => {
+            let locker = gun.locker(nodepath.join('/'))
             locker.put(
               {
                 type: 'file',
@@ -196,7 +226,7 @@ if (vaultname && typeof vaultname === 'string') {
         console.log(input)
       }
       if (input) {
-        let run = actions.get(actionType)
+        let run = actions.get(actionType.trim())
         if (run) {
           await run(input)
         }

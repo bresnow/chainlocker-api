@@ -4,7 +4,7 @@ import lz from '../lz-encrypt.mjs'
 import lzString from 'lz-string'
 import { lzObject } from 'lz-object'
 import { exists, interpretPath, read } from '../file-utils.mjs'
-import { err, warn } from '../debug.mjs'
+import { warn } from '../debug.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
@@ -12,7 +12,7 @@ import 'gun/lib/then.js'
 import config from '../../../config/index.mjs'
 const SEA = Gun.SEA
 declare module 'gun/types' {
-  export interface IGunInstance<TNode> {
+  export interface IGunInstance<TNode> extends IGunUserInstance<TNode> {
     /**
      * Create a new vault in the chain.
      *
@@ -20,52 +20,29 @@ declare module 'gun/types' {
      * Should require sudo privilages to create a new vault.
      *
      */
-    vault(vaultname: string, cb?: CallBack, options?: VaultOpts): IGunInstance<TNode>
-    locker(nodepath: string | string[]): {
-      value(cb: CallBack): Promise<void>
-      put(data: any, cb: CallBack): Promise<void>
-      keys(secret: string | string[]): Promise<ISEAPair>
-    }
-    keys(secret: string | string[]): Promise<ISEAPair>
+    vault(vaultname: string, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
+    locker(nodepath: string | string[]): { value(cb: CallBack): Promise<void>; put(data: any, cb: CallBack): Promise<void> }
+    keys(secret?: string | string[]): Promise<ISEAPair>
   }
 }
 
 export type CallBack = (...ack: any) => void
-export type VaultOpts = { keys: ISEAPair; encoding?: 'utf16' | 'uint8array' | 'base64' | 'uri' }
+export type VaultOpts = { keys: ISEAPair }
 
-export const getCID = async (vaultname: string, keypair: ISEAPair) =>
-  lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)) as string)
-Gun.chain.vault = function (vault, cb, opts) {
+Gun.chain.vault = function (vault, opts) {
   let _gun = this
   let gun = _gun.user()
   let keys = opts?.keys || MASTER_KEYS // can use the master key made from the machine serial or bring your own keys
-  gun.auth(keys, (ack: any) => {
-    if (!ack.err) {
-      let vnode = gun.get(`CHAINLOCKER`).get(vault)
-      vnode.once(async (data) => {
-        let cID = await getCID(vault, keys)
-        let now = Date.now()
-        if (!data) {
-          vnode.put({ created: now, auth: cID })
-        }
-        vnode.once((data) => {
-          if (data) {
-            if (data.auth !== cID) {
-              cb && cb({ err: `Vault ${vault} is not authorized` })
-            } else {
-              vnode.put({ last_auth: now })
-              cb && cb(data)
-            }
-          }
-        })
-      })
-    } else {
-      console.error(ack.err)
-    }
-  })
+  gun.auth(keys).get(vault)
+
+  _gun.keys = async function (secret?: string | string[]) {
+    // can add secret string, username and password, or an array of secret strings
+    let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
+    return keys
+  }
   _gun.locker = (nodepath) => {
     let path,
-      temp = _gun.user().auth(keys) // gets tricky with types but doable
+      temp = gun as unknown as IGunChain<any> // gets tricky with types but doable
     if (typeof nodepath === 'string') {
       path = nodepath.split('/' || '.')
       if (1 === path.length) {
@@ -87,12 +64,8 @@ Gun.chain.vault = function (vault, cb, opts) {
     let node = temp
     return {
       async put(data, cb2) {
-        if (typeof data !== 'object') {
-          err('data must be an object')
-        } else {
-          data = await lz.encrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
-          node.put(data, cb2)
-        }
+        data = await lz.encrypt(data, keys)
+        node.put(data, cb2)
       },
       async value(cb) {
         node.load(async (data: any) => {
@@ -100,23 +73,12 @@ Gun.chain.vault = function (vault, cb, opts) {
           if (!data) {
             return cb({ err: 'Record not found' })
           } else {
-            obj = await lz.decrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+            obj = await lz.decrypt(data, keys)
             cb(obj)
           }
         })
       },
-      async keys(secret) {
-        // can add secret string, username and password, or an array of secret strings
-        let { keys } = await SysUserPair(typeof secret === 'string' ? [vault, secret] : [vault, ...secret])
-        return keys
-      },
     }
   }
-  return _gun //return gun user instance
-}
-
-Gun.chain.keys = async function (secret) {
-  // can add secret string, username and password, or an array of secret strings
-  let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
-  return keys
+  return gun //return gun user instance
 }
