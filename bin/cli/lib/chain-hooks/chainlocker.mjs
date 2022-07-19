@@ -10,11 +10,20 @@ const SEA = Gun.SEA
 Gun.chain.vault = function (vault, opts) {
   let _gun = this
   let gun = _gun.user()
-  let keys = opts?.keys || MASTER_KEYS
-  gun.auth(keys).get(vault)
+  let keys = opts?.keys ?? MASTER_KEYS
+  gun = gun.auth(keys, (ack) => {
+    let err = ack.err
+    if (err) {
+      throw new Error(err)
+    }
+  })
   _gun.keys = async function (secret) {
-    let { keys: keys2 } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
-    return keys2
+    let keypair = MASTER_KEYS
+    if (secret) {
+      let sys = await SysUserPair(typeof secret === 'string' ? [secret] : [...secret])
+      keypair = sys.keys
+    }
+    return keypair
   }
   _gun.locker = (nodepath) => {
     let path,

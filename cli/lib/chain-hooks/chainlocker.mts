@@ -14,31 +14,45 @@ const SEA = Gun.SEA
 declare module 'gun/types' {
   export interface IGunInstance<TNode> extends IGunUserInstance<TNode> {
     /**
-     * Create a new vault in the chain.
+     * Create a new vault context.
      *
      * Takes the lockername and generates the keys against machine info.
      * Should require sudo privilages to create a new vault.
      *
      */
     vault(vaultname: string, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
+    /**
+     * Get a locker instance for a node in the chain.
+     *
+     * @param {string}
+     */
     locker(nodepath: string | string[]): { value(cb: CallBack): Promise<void>; put(data: any, cb: CallBack): Promise<void> }
     keys(secret?: string | string[]): Promise<ISEAPair>
   }
 }
 
 export type CallBack = (...ack: any) => void
-export type VaultOpts = { keys: ISEAPair }
+export type VaultOpts = { keys: ISEAPair; encoding?: 'utf16' | 'base64' | 'uint8array' | 'uri' }
 
 Gun.chain.vault = function (vault, opts) {
   let _gun = this
   let gun = _gun.user()
-  let keys = opts?.keys || MASTER_KEYS // can use the master key made from the machine serial or bring your own keys
-  gun.auth(keys).get(vault)
+  let keys = opts?.keys ?? MASTER_KEYS // can use the master key made from the machine serial or bring your own keys
+  gun = gun.auth(keys, (ack) => {
+    let err = (ack as any).err
+    if (err) {
+      throw new Error(err)
+    }
+  })
 
-  _gun.keys = async function (secret?: string | string[]) {
-    // can add secret string, username and password, or an array of secret strings
-    let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
-    return keys
+  _gun.keys = async function (secret) {
+    // can add secret string, username and password, or an array of secret strings\
+    let keypair = MASTER_KEYS
+    if (secret) {
+      let sys = await SysUserPair(typeof secret === 'string' ? [secret] : [...secret])
+      keypair = sys.keys
+    }
+    return keypair
   }
   _gun.locker = (nodepath) => {
     let path,
