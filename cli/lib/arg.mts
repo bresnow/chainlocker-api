@@ -11,7 +11,6 @@ export const findArg = (argValue: string, { slice = 2, dash = false, valueIsArra
     l = args.length
   for (i; i < l; i++) {
     let arg = args[i]
-
     let [_arg, ..._args] = [args[i], ...args.slice(i + 1)]
     if (dash) {
       if (arg.startsWith(('--' || '-') + argValue)) {
@@ -23,7 +22,7 @@ export const findArg = (argValue: string, { slice = 2, dash = false, valueIsArra
       }
     }
   }
-  return [null, null]
+  return [null, ...args]
 }
 
 /**
