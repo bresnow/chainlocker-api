@@ -40,7 +40,7 @@ Gun.chain.vault = function (vault, cb, opts) {
   })
   _gun.locker = (nodepath) => {
     let path,
-      temp = gun
+      temp = _gun.user().auth(keys)
     if (typeof nodepath === 'string') {
       path = nodepath.split('/')
       if (path.length === 1) {
@@ -86,7 +86,7 @@ Gun.chain.vault = function (vault, cb, opts) {
       },
     }
   }
-  return gun
+  return _gun
 }
 Gun.chain.keys = async function (secret) {
   let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)

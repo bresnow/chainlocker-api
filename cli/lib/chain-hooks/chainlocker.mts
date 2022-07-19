@@ -20,7 +20,7 @@ declare module 'gun/types' {
      * Should require sudo privilages to create a new vault.
      *
      */
-    vault(vaultname: string, cb?: CallBack, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
+    vault(vaultname: string, cb?: CallBack, options?: VaultOpts): IGunInstance<TNode>
     locker(nodepath: string | string[]): {
       value(cb: CallBack): Promise<void>
       put(data: any, cb: CallBack): Promise<void>
@@ -65,7 +65,7 @@ Gun.chain.vault = function (vault, cb, opts) {
   })
   _gun.locker = (nodepath) => {
     let path,
-      temp = gun as unknown as IGunChain<any> // gets tricky with types but doable
+      temp = _gun.user().auth(keys) // gets tricky with types but doable
     if (typeof nodepath === 'string') {
       path = nodepath.split('/' || '.')
       if (1 === path.length) {
@@ -112,7 +112,7 @@ Gun.chain.vault = function (vault, cb, opts) {
       },
     }
   }
-  return gun //return gun user instance
+  return _gun //return gun user instance
 }
 
 Gun.chain.keys = async function (secret) {

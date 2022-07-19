@@ -1,22 +1,25 @@
-import { question, chalk, argv } from 'zx'
+import { question, chalk, argv, sleep } from 'zx'
 import { exists, mkdir, read } from '../lib/file-utils.mjs'
-import Gun, { IGunInstance, ISEAPair } from 'gun'
+import Gun from 'gun'
 import Help from '../lib/help.mjs'
+import fs from 'fs-extra'
 import '../lib/chain-hooks/chainlocker.mjs'
 import { findArg, findParsed as filterParsedArgs, findParsed } from '../lib/arg.mjs'
 import config from '../../config/index.mjs'
-import { MASTER_KEYS, SysUserPair } from '../lib/auth.mjs'
+import { MASTER_KEYS } from '../lib/auth.mjs'
 import { getCID } from '../lib/chain-hooks/chainlocker.mjs'
+import { warn } from '../lib/debug.mjs'
+const caret = chalk.green.bold('\n❱ ')
 
 let gun,
   hasSalt = false
 let [vault, vaultname] = findArg('vault', { dash: false })
-if (!vault || !vaultname) {
-  vaultname = await question(chalk.white.bold(`Enter desired vault name \n  ❱  `))
+if (!vault) {
+  vaultname = await question(chalk.white.bold(`Enter desired vault name${caret}`))
 }
 if (vaultname && typeof vaultname === 'string') {
   let keypair = MASTER_KEYS,
-    cID
+    cID: string
   let [pair, salt] = findArg('pair', { dash: true })
   if (pair) {
     if (!salt) {
@@ -24,7 +27,7 @@ if (vaultname && typeof vaultname === 'string') {
         chalk.white.bold(
           `Enter a unique but ${chalk.bold.green(`memorable`)} salt string **(aka: password)** for a new keypair \n${chalk.yellowBright(
             `WARNING: If you enter the wrong password then a new, empty vault will be created.`
-          )}  ❱  `
+          )}${caret}`
         )
       )
     }
@@ -34,58 +37,171 @@ if (vaultname && typeof vaultname === 'string') {
   }
   cID = await getCID(vaultname, keypair)
   if (!exists(`${config.radDir}/${cID}`)) {
-    console.log(chalk.green(`Creating new vault ${vaultname}`))
+    console.log(chalk.green(`Creating new vault ${vaultname} in 3 seconds...`))
+    warn(
+      `If you were trying to access an existing vault, you may need to exit ${chalk.white.italic(
+        `[CTRL-C]`
+      )} and re-enter your password.${caret}`
+    )
+    await sleep(3000)
     mkdir(`${config.radDir}/${cID}`)
   }
   gun = Gun({ file: `${config.radDir}/${cID}` })
   if (hasSalt && typeof salt === 'string') {
     keypair = await gun.keys([vaultname, salt])
   }
-  gun.vault(
-    vaultname,
-    function (data) {
-      console.log(data)
-    },
-    { keys: keypair }
-  )
-
-  let [store, ...storeopts] = findArg('store', { dash: false, valueIsArray: true })
-  if (!store || !storeopts) {
+  gun = gun.vault(vaultname, undefined, { keys: keypair })
+  let [action, ...actionOpts] = findArg('store', { dash: false, valueIsArray: true })
+  let [actionf, ...actionOptsf] = findArg('fetch', { dash: false, valueIsArray: true })
+  if (actionf) {
+    action = 'fetch'
+    if (actionOptsf) {
+      actionOpts = actionOptsf
+    }
+  }
+  if (!action) {
+    action = await question(
+      chalk.white.bold(`Do you want to ${chalk.bold.green(`store`)} or ${chalk.bold.green(`fetch`)} data in ${vaultname}?${caret}`),
+      { choices: ['store', 'fetch'] }
+    )
+  }
+  if (action) {
     let antwoord = await question(
       chalk.white.bold(
-        `Input the path to desired locker (aka: database node) \nNode paths can be separated by "/"(slash) OR " "(space)  ❱  `
+        `Input the path to desired locker (database node) \nChainLocker paths can be separated by "/"(slash) , "."(dot) , or " "(space)${caret}`
       )
     )
-    storeopts = antwoord.split('/' || ' ')
-    store = 'store'
+
+    actionOpts = antwoord.split(/[\/\.\t\ ]/g)
   }
-  if (store && storeopts.length > 0) {
-    let input
+  if (actionOpts.length > 0) {
     let nodepath: string[] = []
-    let itr = storeopts.values()
-    let [data, put] = findParsed(storeopts, { dash: true, find: 'stdin' || 'file' || 'url' })
-    for (let path in itr) {
-      if (typeof path == 'string' && !path.includes('-' || '--' || data || put)) {
-        nodepath.push(path)
+    let arrItr = actionOpts
+
+    let actionType = '--file' || '--stdin' || '--url'
+
+    for (let i in arrItr) {
+      if (arrItr[i]?.startsWith('--') || arrItr[i] === actionType) {
+        continue
+      }
+      console.log(arrItr[i])
+      if (typeof arrItr[i] == 'string') {
+        nodepath.push(arrItr[i] as string)
       }
     }
-    if (!data || !input)
-      [
-        (data = await question(
+    console.log('NODEPATH', nodepath)
+    console.log(chalk.green(`${vaultname} ❱❱❱--${nodepath.join(' ❱ ')}--❱❱`))
+    let locker = gun.locker(nodepath)
+
+    if (action === 'fetch') {
+      locker.value((data) => {
+        console.log(data)
+      })
+    }
+    if (action === 'store') {
+      let input
+      const actions = new Map([
+        [
+          'stdin' || '0',
+          async (input: string) => {
+            locker.put(
+              {
+                type: 'stdin',
+                data: input,
+                auth: cID,
+              },
+              (data) => {
+                if (data.err) {
+                  console.log(chalk.red(data.err))
+                }
+              }
+            )
+            locker.value((data) => {
+              console.log('Datattatata', data)
+            })
+          },
+        ],
+        [
+          'file' || '1',
+          async (input: string) => {
+            let { isFile, size } = await fs.stat(input)
+            if (isFile()) {
+              let _input = await read(input, 'utf-8')
+              console.log(chalk.green(`${input} ❱❱❱❱ ${size} bytes\n${_input}`))
+              locker.put(
+                {
+                  type: 'file',
+                  data: {
+                    encoding: 'utf-8',
+                    local_path: input,
+                    file_data: _input,
+                  },
+                  auth: cID,
+                },
+                (data) => {
+                  if (data.err) {
+                    console.log(chalk.red(data.err))
+                  }
+                }
+              )
+              locker.value((data) => {
+                console.log('Datattatata', data)
+              })
+            }
+          },
+        ],
+        [
+          'url' || '2',
+          async (input: string) => {
+            locker.put(
+              {
+                type: 'file',
+                data: input,
+                auth: cID,
+              },
+              (data) => {
+                if (data.err) {
+                  console.log(chalk.red(data.err))
+                }
+              }
+            )
+            locker.value((data) => {
+              console.log('Datattatata', data)
+            })
+          },
+        ],
+      ])
+      if (!actionType || !input) {
+        actionType = await question(
           chalk.white.bold(
             `Enter the ${chalk.bold.green(`type`)} of data you would like to store at path ${chalk.bold.green(
               nodepath
-            )}\n Input ${chalk.bold.italic(`stdin ${chalk.italic.cyan(`or`)}, file, or url`)} ❱  `
+            )}\n Input ${chalk.bold.italic(
+              `stdin | ${chalk.italic.cyan(`<0>`)}, file | ${chalk.italic.cyan(`<1>`)}, or url | ${chalk.italic.cyan(`<2>`)}`
+            )}${caret}`
           ),
-          { choices: ['stdin' || 0, 'file' || 1, 'url' || 2] }
-        )),
-      ]
-    if (data) {
-      input = data.split('=')[1] ?? put
-      console.log(input)
+          { choices: ['stdin' || '0', 'file' || '1', 'url' || '2'] }
+        )
+      }
+      if (actionType) {
+        input = actionType.includes('=')
+          ? actionType.split('=')[1]
+          : await question(
+              chalk.white.bold(
+                `Enter the ${chalk.bold.green(actionType.replace('--', ''))} data you would like to store at path ${chalk.bold.green(
+                  nodepath
+                )}${caret}`
+              )
+            )
+        console.log(input)
+      }
+      if (input) {
+        let run = actions.get(actionType)
+        if (run) {
+          await run(input)
+        }
+      }
     }
-    console.log(chalk.green(`Creating new locker ${nodepath.join('/')}`))
-    let locker = gun.locker(nodepath)
   }
 }
 
