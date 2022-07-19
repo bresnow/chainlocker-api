@@ -46,7 +46,7 @@ export const readDirectorySync = (directory: string, allFiles: string[] = []) =>
 
 export function exists(path: string) {
   path = interpretPath(path)
-  return fs.existsSync(interpretPath(path))
+  return fs.existsSync(path)
 }
 
 export async function remove(path: string) {

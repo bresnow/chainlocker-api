@@ -20,40 +20,49 @@ declare module 'gun/types' {
      * Should require sudo privilages to create a new vault.
      *
      */
-    vault(vaultname: string, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
-    locker(nodepath: string | string[]): { value(cb: CallBack): Promise<void>; put(data: any, cb: CallBack): Promise<void> }
-    keys(secret?: string): Promise<ISEAPair>
+    vault(vaultname: string, cb?: CallBack, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
+    locker(nodepath: string | string[]): {
+      value(cb: CallBack): Promise<void>
+      put(data: any, cb: CallBack): Promise<void>
+      keys(secret: string | string[]): Promise<ISEAPair>
+    }
+    keys(secret: string | string[]): Promise<ISEAPair>
   }
 }
 
 export type CallBack = (...ack: any) => void
 export type VaultOpts = { keys: ISEAPair; encoding?: 'utf16' | 'uint8array' | 'base64' | 'uri' }
 
-Gun.chain.vault = function (vault, opts) {
+export const getCID = async (vaultname: string, keypair: ISEAPair) =>
+  lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)) as string)
+Gun.chain.vault = function (vault, cb, opts) {
   let _gun = this
   let gun = _gun.user()
   let keys = opts?.keys || MASTER_KEYS // can use the master key made from the machine serial or bring your own keys
   gun.auth(keys, (ack: any) => {
     if (!ack.err) {
-      let vnode = gun.get(`CHAINLOCKER`)
+      let vnode = gun.get(`CHAINLOCKER`).get(vault)
       vnode.once(async (data) => {
-        let cID = (await Gun.SEA.work(vault, keys)) as string
-        let now = new Date(Date.now()).toLocaleDateString()
+        let cID = await getCID(vault, keys)
+        let now = Date.now()
         if (!data) {
-          vnode.get(cID).put({ vault, created: now })
+          vnode.put({ created: now, auth: cID })
         }
-        vnode.get(cID).get('last_auth').put({ last_auth: now })
+        vnode.once((data) => {
+          if (data) {
+            if (data.auth !== cID) {
+              cb && cb({ err: `Vault ${vault} is not authorized` })
+            } else {
+              vnode.put({ last_auth: now })
+              cb && cb(data)
+            }
+          }
+        })
       })
     } else {
       console.error(ack.err)
     }
   })
-
-  _gun.keys = async function (secret?: string | string[]) {
-    // can add secret string, username and password, or an array of secret strings
-    let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
-    return keys
-  }
   _gun.locker = (nodepath) => {
     let path,
       temp = gun as unknown as IGunChain<any> // gets tricky with types but doable
@@ -96,7 +105,18 @@ Gun.chain.vault = function (vault, opts) {
           }
         })
       },
+      async keys(secret) {
+        // can add secret string, username and password, or an array of secret strings
+        let { keys } = await SysUserPair(typeof secret === 'string' ? [vault, secret] : [vault, ...secret])
+        return keys
+      },
     }
   }
   return gun //return gun user instance
+}
+
+Gun.chain.keys = async function (secret) {
+  // can add secret string, username and password, or an array of secret strings
+  let { keys } = await SysUserPair(typeof secret === 'string' ? [secret] : secret)
+  return keys
 }

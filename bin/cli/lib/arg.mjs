@@ -1,17 +1,18 @@
 'use strict'
-export const findArg = (argValue, { slice = 2, dash = false }) => {
+export const findArg = (argValue, { slice = 2, dash = false, valueIsArray = false }) => {
   let args = process.argv.slice(slice)
   let i = 0,
     l = args.length
   for (i; i < l; i++) {
     let arg = args[i]
+    let [_arg, ..._args] = [args[i], ...args.slice(i + 1)]
     if (dash) {
       if (arg.startsWith('--' + argValue)) {
-        return [arg, args[i + 1]]
+        return !valueIsArray ? [arg, args[i + 1]] : [_arg, ..._args]
       }
     } else {
       if (arg.startsWith(argValue)) {
-        return [arg, args[i + 1]]
+        return !valueIsArray ? [arg, args[i + 1]] : [_arg, ..._args]
       }
     }
   }

@@ -13,9 +13,6 @@ async function encrypt(object, encryptionkey, compressionOptions) {
       case 'utf16':
         compress = lzString.compressToUTF16
         break
-      case 'uint8array':
-        compress = lzString.compressToUint8Array
-        break
       case 'base64':
         compress = lzString.compressToBase64
         break
@@ -47,7 +44,7 @@ async function encrypt(object, encryptionkey, compressionOptions) {
         await encrypt(objectValue, encryptionkey)
       }
     }
-    obj = lzObject.compress(obj, { output: 'utf16' })
+    obj = lzObject.compress(obj, { output: compressionOptions?.encoding ?? 'utf16' })
     return obj
   }
 }
