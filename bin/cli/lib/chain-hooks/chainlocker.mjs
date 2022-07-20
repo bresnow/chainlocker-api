@@ -6,8 +6,10 @@ import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
+import config from '../../../config/index.mjs'
+import { getCID } from '../../src/index.mjs'
 const SEA = Gun.SEA
-Gun.chain.vault = function (vault, opts) {
+Gun.chain.vault = function (vault, cback, opts) {
   let _gun = this
   let gun = _gun.user()
   let keys = opts?.keys ?? MASTER_KEYS
@@ -16,6 +18,29 @@ Gun.chain.vault = function (vault, opts) {
     if (err) {
       throw new Error(err)
     }
+    let lock = gun.get(`ChainLocker`)
+    lock.once(async function (data) {
+      let cID = await getCID(vault, keys)
+      if (!data) {
+        let _data = { vault, vault_id: cID, config: { rad_directory: config.radDir } }
+        let encrypted = await lz.encrypt(_data, keys, { encoding: opts?.encoding ?? 'utf16' })
+        lock.put(encrypted, (ak) => {
+          if (ak.err) {
+            throw new Error(ak.err)
+          }
+        })
+      }
+      if (data) {
+        let obj, tmp
+        tmp = data._
+        delete data._
+        obj = await lz.decrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+        if (obj.vault && obj.vault_id !== cID) {
+          throw new Error(`Err authenticating ${vault}`)
+        }
+        cback && cback({ _: tmp, chainlocker: obj, gun: ack })
+      }
+    })
   })
   _gun.keys = async function (secret) {
     let keypair = MASTER_KEYS
@@ -49,17 +74,23 @@ Gun.chain.vault = function (vault, opts) {
     let node = temp
     return {
       async put(data, cb2) {
-        data = await lz.encrypt(data, keys)
-        node.put(data, cb2)
+        data = await lz.encrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+        node.put(data, (ack) => {
+          if (cb2) {
+            cb2(ack)
+          }
+        })
       },
       async value(cb) {
-        node.load(async (data) => {
-          let obj
+        node.once(async (data) => {
+          let obj, tmp
           if (!data) {
             return cb({ err: 'Record not found' })
           } else {
-            obj = await lz.decrypt(data, keys)
-            cb(obj)
+            tmp = data._
+            delete data._
+            obj = await lz.decrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+            cb({ _: tmp, ...obj })
           }
         })
       },

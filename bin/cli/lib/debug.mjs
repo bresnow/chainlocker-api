@@ -23,7 +23,7 @@ const logger = (message, options) => {
 `)
 }
 export function err(message) {
-  return logger(message, { level: 'danger' })
+  return logger(`${message}`, { level: 'danger' })
 }
 export function warn(message) {
   return logger(message, { level: 'warning' })

@@ -25,8 +25,8 @@ const logger = (message: string, options: { level: 'info' | 'success' | 'warning
   console.log(`${''}${chalk.grey('---')}\n`)
 }
 
-export function err(message: string) {
-  return logger(message, { level: 'danger' })
+export function err(message: unknown) {
+  return logger(`${message}`, { level: 'danger' })
 }
 
 export function warn(message: string) {

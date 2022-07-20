@@ -10,31 +10,12 @@ import 'gun/lib/load.js'
 import 'gun/lib/open.js'
 import 'gun/lib/then.js'
 import config from '../../../config/index.mjs'
+import { getCID } from '../../src/index.mjs'
 const SEA = Gun.SEA
-declare module 'gun/types' {
-  export interface IGunInstance<TNode> extends IGunUserInstance<TNode> {
-    /**
-     * Create a new vault context.
-     *
-     * Takes the lockername and generates the keys against machine info.
-     * Should require sudo privilages to create a new vault.
-     *
-     */
-    vault(vaultname: string, options?: VaultOpts): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>
-    /**
-     * Get a locker instance for a node in the chain.
-     *
-     * @param {string}
-     */
-    locker(nodepath: string | string[]): { value(cb: CallBack): Promise<void>; put(data: any, cb: CallBack): Promise<void> }
-    keys(secret?: string | string[]): Promise<ISEAPair>
-  }
-}
 
-export type CallBack = (...ack: any) => void
-export type VaultOpts = { keys: ISEAPair; encoding?: 'utf16' | 'base64' | 'uint8array' | 'uri' }
+//TODO: FIX UINT8Array decompression
 
-Gun.chain.vault = function (vault, opts) {
+Gun.chain.vault = function (vault, cback, opts) {
   let _gun = this
   let gun = _gun.user()
   let keys = opts?.keys ?? MASTER_KEYS // can use the master key made from the machine serial or bring your own keys
@@ -43,6 +24,32 @@ Gun.chain.vault = function (vault, opts) {
     if (err) {
       throw new Error(err)
     }
+    let lock = gun.get(`ChainLocker`)
+    lock.once(async function (data) {
+      let cID = await getCID(vault, keys)
+
+      if (!data) {
+        let _data = { vault, vault_id: cID, config: { rad_directory: config.radDir } }
+        // vault data for when peered with another locker or Gun graph
+        let encrypted = await lz.encrypt(_data, keys, { encoding: opts?.encoding ?? 'utf16' })
+        lock.put(encrypted, (ak: any) => {
+          if (ak.err) {
+            throw new Error(ak.err)
+          }
+        })
+      }
+      if (data) {
+        let obj, tmp
+        tmp = data._
+        delete data._
+        obj = await lz.decrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+        if (obj.vault && obj.vault_id !== cID) {
+          //check POW hashes to make sure they match
+          throw new Error(`Err authenticating ${vault}`)
+        }
+        cback && cback({ _: tmp, chainlocker: obj, gun: ack })
+      }
+    })
   })
 
   _gun.keys = async function (secret) {
@@ -78,21 +85,28 @@ Gun.chain.vault = function (vault, opts) {
     let node = temp
     return {
       async put(data, cb2) {
-        data = await lz.encrypt(data, keys)
-        node.put(data, cb2)
+        data = await lz.encrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+        node.put(data, (ack) => {
+          if (cb2) {
+            cb2(ack)
+          }
+        })
       },
       async value(cb) {
-        node.load(async (data: any) => {
-          let obj
+        node.once(async (data) => {
+          let obj, tmp
           if (!data) {
             return cb({ err: 'Record not found' })
           } else {
-            obj = await lz.decrypt(data, keys)
-            cb(obj)
+            tmp = data._
+            delete data._
+            obj = await lz.decrypt(data, keys, { encoding: opts?.encoding ?? 'utf16' })
+            cb({ _: tmp, ...obj })
           }
         })
       },
     }
   }
+
   return gun //return gun user instance
 }

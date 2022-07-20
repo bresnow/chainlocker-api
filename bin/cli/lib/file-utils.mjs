@@ -13,7 +13,7 @@ export default async function FileUtils(readPath, writePath) {
   }
   let file = {
     async open(encoding = 'utf8') {
-      await read(readPath, encoding)
+      return await read(readPath, encoding)
     },
     async save(data) {
       return await write(writePath, data)
