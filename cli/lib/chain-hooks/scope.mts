@@ -15,17 +15,19 @@ import os from 'os'
  * TODO: ChainLocker
  */
 let { username } = os.userInfo()
-Gun.chain.scope = async function (what, callback, { verbose = true, alias = username }) {
+Gun.chain.scope = async function (what, callback, { verbose, alias }) {
   let _gun = this
+  verbose = verbose ?? true
+  alias = alias ?? username
   let matches = await glob(what, { gitignore: true })
 
   try {
     let scope = chokidar.watch(matches, { persistent: true })
     const log = console.log
     scope.on('all', (event, path, stats) => {
-      let fileOpts = { path, matches, stats }
+      let fileOpts = { path, matches, event }
       if (callback) {
-        callback(event, fileOpts)
+        callback(path, event, matches)
         if (verbose) {
           log(chalk.green(`scope callback fired : ${event} ${path}`))
         }
@@ -37,11 +39,7 @@ Gun.chain.scope = async function (what, callback, { verbose = true, alias = user
           verbose && log(chalk.red(`File ${path} does not exist`))
           return
         }
-        if (!stats?.isFile()) {
-          verbose && log(chalk.red(`File ${path} is not a file`))
-          return
-        }
-        let nodepath = path.includes('/') ? path.split('/') : [path]
+        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path]
         let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0]
         nodepath.pop() && nodepath.pop()
         if (nodepath && name) {
@@ -60,11 +58,7 @@ Gun.chain.scope = async function (what, callback, { verbose = true, alias = user
           verbose && log(chalk.red(`File ${path} does not exist`))
           return
         }
-        if (!stats?.isFile()) {
-          verbose && log(chalk.red(`File ${path} is not a file`))
-          return
-        }
-        let nodepath = path.includes('/') ? path.split('/') : [path]
+        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path.trim()]
         let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0]
         nodepath.pop() && nodepath.pop()
         if (nodepath && name) {
@@ -72,6 +66,13 @@ Gun.chain.scope = async function (what, callback, { verbose = true, alias = user
             .get(alias)
             .path(nodepath)
             .put({ [name]: await read(path) })
+          verbose &&
+            _gun
+              .get(alias)
+              .path(nodepath)
+              .once((d) => {
+                log('PATH\n' + chalk.green(d._['#']))
+              })
           verbose && log(chalk.green(`File ${path} has been changed`))
         } else {
           log(chalk.red(`Error onChange for ${path}`))
@@ -83,7 +84,7 @@ Gun.chain.scope = async function (what, callback, { verbose = true, alias = user
           verbose && log(chalk.red(`File ${path} does not exist`))
           return
         }
-        let nodepath = path.includes('/') ? path.split('/') : [path]
+        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path]
         let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0]
         nodepath.pop() && nodepath.pop()
         if (nodepath && name) {

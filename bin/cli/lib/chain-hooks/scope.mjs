@@ -5,37 +5,39 @@ import chokidar from 'chokidar'
 import { glob, chalk } from 'zx'
 import { read, exists } from '../file-utils.mjs'
 import os from 'os'
-Gun.chain.scope = async function (what, options) {
-  options = options ?? {
-    verbose: true,
-    alias: os.userInfo().username,
-  }
+let { username } = os.userInfo()
+Gun.chain.scope = async function (what, callback, { verbose, alias }) {
   let _gun = this
-  _gun.opt({ file: 'scope_dev' })
-  let modifiedPath = options.alias
-  let matches = await glob([...what], { gitignore: true })
+  verbose = verbose ?? true
+  alias = alias ?? username
+  let matches = await glob(what, { gitignore: true })
   try {
     let scope = chokidar.watch(matches, { persistent: true })
     const log = console.log
+    scope.on('all', (event, path, stats) => {
+      let fileOpts = { path, matches, event }
+      if (callback) {
+        callback(path, event, matches)
+        if (verbose) {
+          log(chalk.green(`scope callback fired : ${event} ${path}`))
+        }
+      }
+    })
     scope
       .on('add', async function (path, stats) {
         if (!exists(path)) {
-          options.verbose && log(chalk.red(`File ${path} does not exist`))
+          verbose && log(chalk.red(`File ${path} does not exist`))
           return
         }
-        if (!stats?.isFile()) {
-          options.verbose && log(chalk.red(`File ${path} is not a file`))
-          return
-        }
-        let nodepath = path.split('/')
-        let name = nodepath.at(nodepath.length - 1)
+        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path]
+        let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0]
         nodepath.pop() && nodepath.pop()
         if (nodepath && name) {
           _gun
-            .get(options.alias)
+            .get(alias)
             .path(nodepath)
             .put({ [name]: await read(path) })
-          options.verbose && log(chalk.green(`File ${path} has been added`))
+          verbose && log(chalk.green(`File ${path} has been added`))
         } else {
           log(chalk.red(`Error adding file ${path}`))
           return
@@ -43,22 +45,25 @@ Gun.chain.scope = async function (what, options) {
       })
       .on('change', async function (path, stats) {
         if (!exists(path)) {
-          options.verbose && log(chalk.red(`File ${path} does not exist`))
+          verbose && log(chalk.red(`File ${path} does not exist`))
           return
         }
-        if (!stats?.isFile()) {
-          options.verbose && log(chalk.red(`File ${path} is not a file`))
-          return
-        }
-        let nodepath = path.split('/')
-        let name = nodepath.at(nodepath.length - 1)
+        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path.trim()]
+        let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0]
         nodepath.pop() && nodepath.pop()
         if (nodepath && name) {
           _gun
-            .get(options.alias)
+            .get(alias)
             .path(nodepath)
             .put({ [name]: await read(path) })
-          options.verbose && log(chalk.green(`File ${path} has been changed`))
+          verbose &&
+            _gun
+              .get(alias)
+              .path(nodepath)
+              .once((d) => {
+                log('PATH\n' + chalk.green(d._['#']))
+              })
+          verbose && log(chalk.green(`File ${path} has been changed`))
         } else {
           log(chalk.red(`Error onChange for ${path}`))
           return
@@ -66,24 +71,24 @@ Gun.chain.scope = async function (what, options) {
       })
       .on('unlink', async function (path) {
         if (!exists(path)) {
-          options.verbose && log(chalk.red(`File ${path} does not exist`))
+          verbose && log(chalk.red(`File ${path} does not exist`))
           return
         }
-        let nodepath = path.split('/')
-        let name = nodepath.at(nodepath.length - 1)
+        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path]
+        let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0]
         nodepath.pop() && nodepath.pop()
         if (nodepath && name) {
           _gun
-            .get(options.alias)
+            .get(alias)
             .path([...nodepath, name])
             .put(null)
-          options.verbose && log(chalk.green(`File ${path} has been removed`))
+          verbose && log(chalk.green(`File ${path} has been removed`))
         } else {
           log(chalk.red(`Error deleting file ${path}`))
           return
         }
       })
-    if (options.verbose) {
+    if (verbose) {
       scope
         ?.on('addDir', (path) => log(chalk.magenta(`Directory ${path} has been added`)))
         .on('unlinkDir', (path) => log(chalk.magenta(`Directory ${path} has been removed`)))

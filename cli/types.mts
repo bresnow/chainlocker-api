@@ -1,3 +1,4 @@
+import { FSWatcher } from 'chokidar'
 import { Stats } from 'fs'
 import { IGunChain, IGunInstanceRoot, IGunUserInstance, ISEAPair } from 'gun'
 
@@ -24,20 +25,14 @@ declare module 'gun/types' {
     scope(
       what: string[],
       callback: ScopeCb | undefined,
-      {
-        verbose,
-        alias,
-      }: {
-        verbose: true
+      opts: {
+        verbose: boolean
         alias: string
       }
     ): Promise<void>
   }
 }
-export type ScopeCb = (
-  event: 'add' | 'addDir' | 'change' | 'unlink' | 'unlinkDir',
-  fileOpts?: Partial<{ path: string; matches: string[]; stats: Stats | undefined }>
-) => void
+export type ScopeCb = (path?: string, event?: 'add' | 'addDir' | 'change' | 'unlink' | 'unlinkDir', matches?: string[]) => void
 export type CallBack = (...ack: any) => void
 
 export type VaultOpts = { keys?: ISEAPair; encoding?: 'utf16' | 'base64' | 'uint8array' | 'uri' }

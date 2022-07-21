@@ -1,6 +1,6 @@
 {
   "name": "chainlocker",
-  "version": "1.0.11",
+  "version": "1.1.0",
   "description": "Command line interface for GUN relay-server deployment, gun resource routes, and secure data storage/retrevial",
   "main": "index.mts",
   "type": "module",
@@ -11,7 +11,7 @@
     "push": "node scripts/push.mjs"
   },
   "bin": {
-    "chainlocker": "cli/gunsafe.js"
+    "chainlocker": "bin/cli/src/index.mjs"
   },
   "repository": {
     "type": "git",
