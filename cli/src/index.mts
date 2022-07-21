@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { question, chalk, $ } from 'zx'
+import { question, chalk, $, sleep } from 'zx'
 import { exists } from '../lib/file-utils.mjs'
 import Gun, { ISEAPair } from 'gun'
 import '../lib/chain-hooks/chainlocker.mjs'
@@ -63,6 +63,7 @@ export default async function Start(): Promise<void> {
           )} and re-enter your password.${caret}`
         )
       )
+      await sleep(3000)
       try {
         await $`mkdir -p ${config.radDir}/${cID}`
       } catch (error) {

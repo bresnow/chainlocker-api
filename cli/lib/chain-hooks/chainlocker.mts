@@ -1,10 +1,6 @@
-import Gun, { GunSchema, IGunChain, IGunInstance, IGunInstanceRoot, IGunUserInstance, ISEAPair } from 'gun'
-import { SysUserPair, MASTER_KEYS, MASTER_SERIAL } from '../auth.mjs'
+import Gun, { IGunChain } from 'gun'
+import { SysUserPair, MASTER_KEYS } from '../auth.mjs'
 import lz from '../lz-encrypt.mjs'
-import lzString from 'lz-string'
-import { lzObject } from 'lz-object'
-import { exists, interpretPath, read } from '../file-utils.mjs'
-import { warn } from '../debug.mjs'
 import 'gun/lib/path.js'
 import 'gun/lib/load.js'
 import 'gun/lib/open.js'
@@ -52,15 +48,6 @@ Gun.chain.vault = function (vault, cback, opts) {
     })
   })
 
-  _gun.keys = async function (secret) {
-    // can add secret string, username and password, or an array of secret strings\
-    let keypair = MASTER_KEYS
-    if (secret) {
-      let sys = await SysUserPair(typeof secret === 'string' ? [secret] : [...secret])
-      keypair = sys.keys
-    }
-    return keypair
-  }
   _gun.locker = (nodepath) => {
     let path,
       temp = gun as unknown as IGunChain<any> // gets tricky with types but doable
@@ -109,4 +96,14 @@ Gun.chain.vault = function (vault, cback, opts) {
   }
 
   return gun //return gun user instance
+}
+
+Gun.chain.keys = async function (secret) {
+  // can add secret string, username and password, or an array of secret strings\
+  let keypair = MASTER_KEYS
+  if (secret) {
+    let sys = await SysUserPair(typeof secret === 'string' ? [secret] : [...secret])
+    keypair = sys.keys
+  }
+  return keypair
 }

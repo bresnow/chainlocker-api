@@ -42,14 +42,6 @@ Gun.chain.vault = function (vault, cback, opts) {
       }
     })
   })
-  _gun.keys = async function (secret) {
-    let keypair = MASTER_KEYS
-    if (secret) {
-      let sys = await SysUserPair(typeof secret === 'string' ? [secret] : [...secret])
-      keypair = sys.keys
-    }
-    return keypair
-  }
   _gun.locker = (nodepath) => {
     let path,
       temp = gun
@@ -97,4 +89,12 @@ Gun.chain.vault = function (vault, cback, opts) {
     }
   }
   return gun
+}
+Gun.chain.keys = async function (secret) {
+  let keypair = MASTER_KEYS
+  if (secret) {
+    let sys = await SysUserPair(typeof secret === 'string' ? [secret] : [...secret])
+    keypair = sys.keys
+  }
+  return keypair
 }

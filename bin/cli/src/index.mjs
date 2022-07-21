@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict'
-import { question, chalk, $ } from 'zx'
+import { question, chalk, $, sleep } from 'zx'
 import { exists } from '../lib/file-utils.mjs'
 import Gun from 'gun'
 import '../lib/chain-hooks/chainlocker.mjs'
@@ -51,6 +51,7 @@ ${chalk.yellowBright(`WARNING: If you enter the wrong password then a new, empty
           )} and re-enter your password.${caret}`
         )
       )
+      await sleep(3e3)
       try {
         await $`mkdir -p ${config.radDir}/${cID}`
       } catch (error) {
