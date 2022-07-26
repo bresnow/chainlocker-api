@@ -6,8 +6,6 @@ import { $, chalk } from 'zx'
 
 const gun = Gun({ file: 'scope' })
 export default async function Dev() {
-  const { default: Start } = await import('../bin/cli/src/index.mjs')
-  Start()
   await $`cat scope/! > scope/dev_data.json`
   gun.scope(
     ['**/*.mts'],
@@ -20,15 +18,17 @@ export default async function Dev() {
         if (file === 'cli/types.mts') {
           return
         }
-        esbuild.build({
-          entryPoints: [file],
-          outfile: `bin/${file.replace('ts', 'js')}`,
-          bundle: false,
-          platform: 'node',
-        })
-        console.log(chalk.green.bold(`${file} Rebuilt`))
-        console.log(chalk.blue.bold(`... Restarting\n\n`))
-        await Dev()
+        esbuild
+          .build({
+            entryPoints: [file],
+            outfile: `bin/${file.replace('ts', 'js')}`,
+            bundle: false,
+            platform: 'node',
+          })
+          .then(async () => {
+            console.log(chalk.green.bold(`${file} rebuilt`))
+            await Dev()
+          })
       }
     },
     { verbose: false }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { question, chalk, $, sleep } from 'zx'
-import { exists } from '../lib/file-utils.mjs'
+import { question, chalk, $, sleep, fetch } from 'zx'
+import { exists, read } from '../lib/file-utils.mjs'
 import Gun, { ISEAPair } from 'gun'
 import '../lib/chain-hooks/chainlocker.mjs'
 import { findArg } from '../lib/arg.mjs'
@@ -75,7 +75,7 @@ export default async function Start(): Promise<void> {
     let vault = gun.vault(
       vaultname,
       (_ack) => {
-        console.log(chalk.green(`Vault ${vaultname} Authorized. \n public-key: ${keypair.pub} \n pubic-encryption-key: ${keypair.epub}`))
+        console.log(chalk.green(`Vault ${vaultname} Authorized. \n public-key: ${keypair.pub} \n`))
       },
       { keys: keypair }
     )
@@ -140,7 +140,7 @@ export default async function Start(): Promise<void> {
             let type = await question(
               chalk.white.bold(
                 `Enter the ${chalk.bold.green(`type`)} of data you would like to store at path ${chalk.bold.green(
-                  nodepath
+                  nodepath.join(' ❱ ')
                 )}\n Input ${chalk.bold.italic(
                   `${chalk.italic.cyan(`stdin`)}, ${chalk.italic.cyan(`file`)}, or ${chalk.italic.cyan(`url`)}`
                 )}${caret}`
@@ -173,13 +173,54 @@ export default async function Start(): Promise<void> {
           let results = await actionOptPrompt()
           // console.log('OPT\n   ', results)
           let { type, value } = results
-          gun.locker(nodepath).put({ type, value })
-          gun.locker(nodepath).value(function (value) {
-            console.log(chalk.green(`Stored at path ${nodepath.join(' ❱ ')}`))
-            console.log(value)
-          })
+          switch (type) {
+            case 'stdin':
+              gun.locker(nodepath).put({ type, value })
+
+              gun.locker(nodepath).value(function (value) {
+                console.log(chalk.green(`Stored at path ${nodepath.join(' ❱ ')}`))
+                console.log(value)
+                process.exit(0)
+              })
+              break
+            case 'file':
+              if (value) {
+                if (!exists(value)) {
+                  console.log(chalk.red(`File ${value} does not exist. Try again...`))
+                  await actionOptPrompt()
+                } else {
+                  value = await read(value)
+                  console.log(value)
+
+                  gun.locker(nodepath).put({ type, value })
+
+                  gun.locker(nodepath).value(function (value) {
+                    console.log(chalk.green(`Stored at path ${nodepath.join(' ❱ ')}`))
+                    console.log(value)
+                    process.exit(0)
+                  })
+                }
+              }
+              break
+            case 'url':
+              if (value) {
+                let _value = await fetch(value)
+                console.log(await _value.text())
+                value = await _value.text()
+                gun.locker(nodepath).put({ type, value })
+
+                gun.locker(nodepath).value(function (value) {
+                  console.log(chalk.green(`Stored at path ${nodepath.join(' ❱ ')}`))
+                  console.log(value)
+                  process.exit(0)
+                })
+              }
+              break
+            default:
+              console.log(chalk.red(`${type} is not a valid option. Try again...`))
+              await actionOptPrompt()
+          }
         }
-        // process.exit(0)
       }
       //
       //         if (!_value) {
