@@ -1,6 +1,6 @@
 {
   "name": "chainlocker",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Command line interface for GUN relay-server deployment, gun resource routes, and secure data storage/retrevial",
   "main": "build/index.js",
   "types": "build/types/index.d.ts",
