@@ -1,17 +1,15 @@
 {
   "name": "chainlocker",
-  "version": "1.1.2",
+  "version": "1.0.1",
   "description": "Command line interface for GUN relay-server deployment, gun resource routes, and secure data storage/retrevial",
-  "main": "index.mts",
+  "main": "build/index.mjs",
+  "types": "build/types/index.d.mts",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "start": "cross-env-shell NODE_ENV=production MASTER-KEYS=$MASTER-KEYS node bin/cli/src/index.mjs",
+    "build": "tsc -p tsconfig.json",
+    "start": "cross-env-shell NODE_ENV=production MASTER-KEYS=$MASTER-KEYS node build/src/index.mjs",
     "prettier": "prettier --write '**/*.{json,mjs,ts,mts}'",
     "push": "node scripts/push.mjs"
-  },
-  "bin": {
-    "chainlocker": "bin/cli/src/index.mjs"
   },
   "repository": {
     "type": "git",
