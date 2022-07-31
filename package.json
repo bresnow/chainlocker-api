@@ -1,10 +1,9 @@
 {
   "name": "chainlocker",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Command line interface for GUN relay-server deployment, gun resource routes, and secure data storage/retrevial",
   "main": "build/index.js",
   "types": "build/types/index.d.ts",
-  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "cross-env-shell NODE_ENV=production MASTER-KEYS=$MASTER-KEYS node build/src/index.mjs",
