@@ -4,12 +4,13 @@ import 'zx/globals'
 import esbuild from 'esbuild'
 
 let matches = await glob(['**/*.mts'], { gitignore: true })
-matches.forEach((file) => {
-  console.log(file)
-  esbuild.build({
-    entryPoints: [file],
-    outfile: `bin/${file.replace('ts', 'js')}`,
-    bundle: false,
-    platform: 'node',
-  })
+
+matches.forEach( (match) => {
+
+  esbuild.buildSync({target: 'es2020', entryPoints: [match]})
 })
+
+
+
+await esbuild.build({ entryPoints: ['src/index.mts'], outfile: 'dist/index.js', bundle: true })
+await $`tsc -p tsconfig.json`

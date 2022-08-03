@@ -4,33 +4,6 @@ import fg from 'fast-glob'
 import { $, cd } from 'zx'
 import { join } from 'path'
 
-export default async function FileUtils(readPath: string, writePath: string) {
-  if (!exists(readPath)) {
-    throw new Error(`file-utils: ${readPath} does not exist`)
-  }
-  if (!exists(writePath)) {
-    throw new Error(`file-utils: ${writePath} path does not exist`)
-  }
-  let file = {
-    async open(encoding: BufferEncoding = 'utf8') {
-      return await read(readPath, encoding)
-    },
-    async save(data: any) {
-      return await write(writePath, data)
-    },
-    change: {
-      async readFile(readPath: string) {
-        return await FileUtils(readPath, writePath)
-      },
-      async writeFile(writePath: string, data: any) {
-        return await (await FileUtils(readPath, writePath)).save(data)
-      },
-    },
-    JSON: await jsonRead(readPath),
-  }
-  return file
-}
-
 export function interpretPath(...args: string[]) {
   return path.join($.cwd || process.cwd(), ...(args ?? ''))
 }
