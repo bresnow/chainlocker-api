@@ -12,7 +12,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/bresnow/chainlocker"
+		"url": "git+https://github.com/bresnow/chainlocker-api"
 	},
 	"keywords": [
 		"decentralized",
@@ -22,9 +22,8 @@
 	],
 	"author": "Bresnow",
 	"license": "MIT",
-	"homepage": "https://github.com/bresnow/chainlocker#readme",
+	"homepage": "https://github.com/bresnow/chainlocker-api#readme",
 	"dependencies": {
-		"@mdx-js/mdx": "^2.1.2",
 		"@types/node-forge": "^1.0.4",
 		"btoa": "^1.2.1",
 		"chokidar": "^3.5.3",
