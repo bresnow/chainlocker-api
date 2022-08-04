@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { $, question, YAML, chalk } from 'zx';
+import { $, question, chalk } from 'zx';
 import { io } from 'fsxx';
 import 'zx/globals';
 $.verbose = false;
