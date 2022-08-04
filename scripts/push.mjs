@@ -32,6 +32,7 @@ if (message === undefined) {
 await $`git status`;
 try {
 	await $`yarn prettier`;
+	await $`yarn publish --new-version ${version} --message "${message}"`;
 } catch (error) {
 	console.log(chalk.red(error));
 }
