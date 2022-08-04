@@ -5,7 +5,7 @@
 		"declarationDir": "build/types",
 		"module": "esnext",
 		"target": "esnext",
-		"lib": ["esnext","DOM", "DOM.Iterable"],
+		"lib": ["esnext", "DOM", "DOM.Iterable"],
 		"moduleResolution": "node",
 		"allowSyntheticDefaultImports": true,
 		"sourceMap": false,
@@ -24,8 +24,7 @@
 	"exclude": ["node_modules", "build"],
 	"watchOptions": {
 		"excludeDirectories": ["node_modules", "build"],
-		"watchFile": "useFsEvents" ,
+		"watchFile": "useFsEvents",
 		"watchDirectory": "useFsEvents"
-	},
-
+	}
 }
