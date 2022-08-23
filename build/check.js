@@ -13,5 +13,5 @@ export const checkIfThis = {
     },
     isArray: (value) => {
         return Array.isArray(value);
-    },
+    }
 };

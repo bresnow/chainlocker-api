@@ -33,7 +33,9 @@ async function encrypt(object, encryptionkey, compressionOptions) {
         const entries = Object.entries(object);
         for (let i = 0; i < entries.length; i += 1) {
             const [objectKey, objectValue] = entries[i];
-            if ((encryptionkey && checkIfThis.isString(objectValue)) || checkIfThis.isBoolean(objectValue) || checkIfThis.isNumber(objectValue)) {
+            if ((encryptionkey && checkIfThis.isString(objectValue)) ||
+                checkIfThis.isBoolean(objectValue) ||
+                checkIfThis.isNumber(objectValue)) {
                 try {
                     let encrypted = await Gun.SEA.encrypt(objectValue, encryptionkey);
                     Object.assign(obj, { [objectKey]: encrypted });
@@ -103,7 +105,7 @@ async function decrypt(object, encryptionkey, compressionOptions) {
 }
 export default {
     encrypt,
-    decrypt,
+    decrypt
 };
 // const test = { test: 'njsanj1', test1: 'ajbsdkjasbda2', test11: 'dkjasbdksj3', test111: 'sadahsbdkshda', testyyyy: 'TESTERRRRR' },
 //   enc = { epriv: 'khjksbkdjbsajkbdljkasblfsbdajkfbsdkjfbasdklfbasljdbfskdjb' }

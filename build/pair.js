@@ -1,4 +1,4 @@
-let crypto = await import('crypto').then((WebCrypto) => {
+let crypto = import('crypto').then((WebCrypto) => {
     return WebCrypto.webcrypto;
 });
 import forge from 'node-forge';
@@ -35,7 +35,7 @@ export default async function Pair(pwd, salt) {
             pub: keyBuffer_to_jwk('ECDSA', Buffer.from(keyA_s.getPublic('hex'), 'hex')),
             priv: arrayBufToBase64UrlEncode(Buffer.from(privateKey_s, 'hex')),
             epub: keyBuffer_to_jwk('ECDH', Buffer.from(keyA_d.getPublic('hex'), 'hex')),
-            epriv: arrayBufToBase64UrlEncode(Buffer.from(privateKey_d, 'hex')),
+            epriv: arrayBufToBase64UrlEncode(Buffer.from(privateKey_d, 'hex'))
             // secret: arrayBufToBase64UrlEncode(Buffer.from(keyA_d.derive(keyA_s.getPublic()).toString('hex'), 'hex'))
         });
     });

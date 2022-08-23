@@ -15,7 +15,10 @@ export async function SysUserPair(secret) {
         ? Object.values({ username, platform, arch }).concat(...secret)
         : Object.values({ username, platform, arch });
     let keys = await Pair({ username, platform, arch }, salt);
-    let workedImmutables = await Gun.SEA.work({ username, platform, arch }, keys, null, { name: 'SHA-256', salt });
+    let workedImmutables = await Gun.SEA.work({ username, platform, arch }, keys, null, {
+        name: 'SHA-256',
+        salt
+    });
     return { keys, username, serial: workedImmutables };
 }
 export function getImmutableMachineInfo() {
@@ -94,7 +97,7 @@ Gun.chain.vault = function (vault, keys, cback) {
                         cb({ _: tmp, ...obj });
                     }
                 });
-            },
+            }
         };
     };
     return gun; //return gun user instance
