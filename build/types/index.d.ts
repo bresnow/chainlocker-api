@@ -30,6 +30,11 @@ declare module 'gun/types' {
         scope(what: string[], callback: ScopeCb | undefined, opts: {
             verbose: boolean;
             alias: string;
+            encoding: BufferEncoding | undefined;
+        }): Promise<void>;
+        unpack(what: string[], callback: CallBack, opts: {
+            alias: string;
+            encoding: BufferEncoding | undefined;
         }): Promise<void>;
     }
 }
