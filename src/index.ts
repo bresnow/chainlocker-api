@@ -32,7 +32,7 @@ declare module 'gun/types' {
 		 */
 		locker(nodepath: string | string[]): {
 			value(cb: CallBack): Promise<void>;
-			put(data: any, cb?: CallBack): Promise<void>;
+			put(data: string | Record<string, any> | undefined, cb?: CallBack): Promise<void>;
 		};
 		keys(secret?: string | string[], callback?: CallBack): Promise<ISEAPair>;
 	}
@@ -86,7 +86,7 @@ Gun.chain.vault = function (vault, keys, cback) {
 		if (err) {
 			throw new Error(err);
 		}
-		let lock = gun.get(`chainlocker`);
+		let lock = gun.get(vault);
 		lock.once(async function (data: { _: any }) {
 			let cID = await getCID(vault, keys);
 			if (!data) {

@@ -22,7 +22,7 @@ declare module 'gun/types' {
          */
         locker(nodepath: string | string[]): {
             value(cb: CallBack): Promise<void>;
-            put(data: any, cb?: CallBack): Promise<void>;
+            put(data: string | Record<string, any> | undefined, cb?: CallBack): Promise<void>;
         };
         keys(secret?: string | string[], callback?: CallBack): Promise<ISEAPair>;
     }

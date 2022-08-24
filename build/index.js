@@ -35,7 +35,7 @@ Gun.chain.vault = function (vault, keys, cback) {
         if (err) {
             throw new Error(err);
         }
-        let lock = gun.get(`chainlocker`);
+        let lock = gun.get(vault);
         lock.once(async function (data) {
             let cID = await getCID(vault, keys);
             if (!data) {
