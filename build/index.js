@@ -1,33 +1,17 @@
 import Gun from 'gun';
 import chokidar from 'chokidar';
-import glob from 'fast-glob';
-import fs from 'fs-extra';
-import os from 'os';
-import path from 'path';
 import lz from './lz-encrypt.js';
+import glob from 'fast-glob';
+import fs from 'fs/promises';
 import 'gun/lib/path.js';
 import 'gun/lib/load.js';
 import 'gun/lib/open.js';
 import 'gun/lib/then.js';
-import lzString from 'lz-string';
+import path from 'path';
 import Pair from './pair.js';
-export function exists(path) {
-    path = interpretPath(path);
-    return fs.existsSync(path);
-}
+import lzString from 'lz-string';
+import { os } from 'zx/.';
 export const getCID = async (vaultname, keypair) => lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)));
-const SEA = Gun.SEA;
-export function interpretPath(...args) {
-    return path.join(process.cwd(), ...(args ?? ''));
-}
-export async function write(path, content, encoding = 'utf8') {
-    path = interpretPath(path);
-    return fs.writeFile(path, content, { encoding });
-}
-export async function read(path, encoding) {
-    path = interpretPath(path);
-    return fs.readFile(path, encoding ?? 'utf8');
-}
 export async function SysUserPair(secret) {
     let { username, platform, arch } = getImmutableMachineInfo();
     let salt = secret
@@ -138,6 +122,22 @@ Gun.chain.keys = async function (secret, callback) {
     callback && callback(keypair);
     return keypair;
 };
+export function exists(path) {
+    path = interpretPath(path);
+    return fs.stat(path);
+}
+const SEA = Gun.SEA;
+export function interpretPath(...args) {
+    return path.join(process.cwd(), ...(args ?? ''));
+}
+export async function write(path, content, encoding = 'utf8') {
+    path = interpretPath(path);
+    return fs.writeFile(path, content, { encoding });
+}
+export async function read(path, encoding) {
+    path = interpretPath(path);
+    return fs.readFile(path, { encoding });
+}
 /**
  * Scope watches the files in a directory and stores them in rad. No separate .ignore files as it uses the .gitignore file already in your current directory.
  * @param {string[]}what Glob pattern to watch
@@ -150,8 +150,11 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
     let _gun = this;
     verbose = verbose ?? true;
     alias = alias ?? 'scope';
-    let ignore = (await read('.gitignore')).split('\n').map(line => line.trim()).filter(line => !line.startsWith('#') && line.length > 0);
-    let matches = await glob(what, { ignore: [...ignore] });
+    // let ignore = (await read('.gitignore') as string)
+    // 	.split('\n')
+    // 	.map((line) => line.trim())
+    // 	.filter((line) => !line.startsWith('#') && line.length > 0);
+    let matches = await glob(what);
     let scoper = _gun.get(alias);
     try {
         let scope = chokidar.watch(matches, { persistent: true });
@@ -225,7 +228,7 @@ Gun.chain.unpack = async function ({ alias, encoding }) {
         delete dirs._;
         Object.keys(dirs).forEach((dir) => {
             let _dir = dir.slice(0, dir.lastIndexOf('/'));
-            fs.mkdirpSync(alias + '/' + _dir);
+            fs.mkdir(alias + '/' + _dir, { recursive: true });
             _gun.path(alias + '.' + dir).once(async (data) => {
                 if (data) {
                     let { file, ext, size } = data;

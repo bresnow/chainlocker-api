@@ -4,11 +4,7 @@ import 'gun/lib/path.js';
 import 'gun/lib/load.js';
 import 'gun/lib/open.js';
 import 'gun/lib/then.js';
-export declare function exists(path: string): boolean;
 export declare const getCID: (vaultname: string, keypair: ISEAPair) => Promise<string>;
-export declare function interpretPath(...args: string[]): string;
-export declare function write(path: any, content: string, encoding?: BufferEncoding): Promise<void>;
-export declare function read(path: string, encoding?: BufferEncoding): Promise<string>;
 declare module 'gun/types' {
     interface IGunInstance<TNode> extends IGunUserInstance {
         /**
@@ -58,3 +54,7 @@ export declare function getImmutableMachineInfo(): {
     platform: NodeJS.Platform;
     arch: string;
 };
+export declare function exists(path: string): Promise<import("fs").Stats>;
+export declare function interpretPath(...args: string[]): string;
+export declare function write(path: any, content: string, encoding?: BufferEncoding): Promise<void>;
+export declare function read(path: string, encoding?: BufferEncoding): Promise<string | Buffer>;
