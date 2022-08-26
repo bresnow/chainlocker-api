@@ -1,34 +1,17 @@
 import Gun, { GunMessagePut, IGunChain, IGunInstanceRoot, IGunUserInstance, ISEAPair } from 'gun';
-import fs from 'fs-extra';
+
 import os from 'os';
-import path from 'path';
+
 import lz from './lz-encrypt.js';
 import 'gun/lib/path.js';
 import 'gun/lib/load.js';
 import 'gun/lib/open.js';
 import 'gun/lib/then.js';
-import lzString from 'lz-string';
+
 import Pair from './pair.js';
-export function exists(path: string) {
-	path = interpretPath(path);
-	return fs.existsSync(path);
-}
+import lzString from 'lz-string';
 export const getCID = async (vaultname: string, keypair: ISEAPair) =>
 	lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)) as string);
-const SEA = Gun.SEA;
-export function interpretPath(...args: string[]): string {
-	return path.join(process.cwd(), ...(args ?? ''));
-}
-
-export async function write(path: any, content: string, encoding: BufferEncoding = 'utf8') {
-	path = interpretPath(path);
-	return fs.writeFile(path, content, { encoding });
-}
-
-export async function read(path: string, encoding?: BufferEncoding) {
-	path = interpretPath(path);
-	return fs.readFile(path, encoding ?? 'utf8');
-}
 declare module 'gun/types' {
 	interface IGunInstance<TNode> extends IGunUserInstance {
 		/**

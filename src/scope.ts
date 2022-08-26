@@ -6,7 +6,26 @@ import 'gun/lib/path.js';
 import 'gun/lib/load.js';
 import 'gun/lib/open.js';
 import 'gun/lib/then.js';
-import { exists, read, write } from '.';
+import path from 'path';
+export function exists(path: string) {
+	path = interpretPath(path);
+	return fs.existsSync(path);
+}
+
+const SEA = Gun.SEA;
+export function interpretPath(...args: string[]): string {
+	return path.join(process.cwd(), ...(args ?? ''));
+}
+
+export async function write(path: any, content: string, encoding: BufferEncoding = 'utf8') {
+	path = interpretPath(path);
+	return fs.writeFile(path, content, { encoding });
+}
+
+export async function read(path: string, encoding?: BufferEncoding) {
+	path = interpretPath(path);
+	return fs.readFile(path, encoding ?? 'utf8');
+}
 /**
  * Scope watches the files in a directory and stores them in rad. No separate .ignore files as it uses the .gitignore file already in your current directory.
  * @param {string[]}what Glob pattern to watch
