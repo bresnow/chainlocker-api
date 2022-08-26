@@ -1,9 +1,9 @@
 import Gun from 'gun';
 import chokidar from 'chokidar';
 import { glob, chalk } from 'zx';
-import { writeFileSync } from 'fs';
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import os from 'os';
+import path from 'path';
 import lz from './lz-encrypt.js';
 import 'gun/lib/path.js';
 import 'gun/lib/load.js';
@@ -11,8 +11,23 @@ import 'gun/lib/open.js';
 import 'gun/lib/then.js';
 import lzString from 'lz-string';
 import Pair from './pair.js';
+export function exists(path) {
+    path = interpretPath(path);
+    return fs.existsSync(path);
+}
 export const getCID = async (vaultname, keypair) => lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)));
 const SEA = Gun.SEA;
+export function interpretPath(...args) {
+    return path.join(process.cwd(), ...(args ?? ''));
+}
+export async function write(path, content, encoding = 'utf8') {
+    path = interpretPath(path);
+    return fs.writeFile(path, content, { encoding });
+}
+export async function read(path, encoding) {
+    path = interpretPath(path);
+    return fs.readFile(path, encoding ?? 'utf8');
+}
 export async function SysUserPair(secret) {
     let { username, platform, arch } = getImmutableMachineInfo();
     let salt = secret
@@ -88,18 +103,22 @@ Gun.chain.vault = function (vault, keys, cback) {
                     }
                 });
             },
-            async value(cb) {
-                node.once(async (data) => {
-                    let obj, tmp;
-                    if (!data) {
-                        return cb({ err: 'Record not found' });
-                    }
-                    else {
-                        tmp = data._;
-                        delete data._;
-                        obj = await lz.decrypt(data, keys);
-                        cb({ _: tmp, ...obj });
-                    }
+            value(cb) {
+                return new Promise((resolve) => {
+                    node.once(async (data) => {
+                        let obj, tmp;
+                        if (!data) {
+                            cb({ err: 'Record not found' });
+                            resolve({ err: 'Record not found' });
+                        }
+                        else {
+                            tmp = data._;
+                            delete data._;
+                            obj = await lz.decrypt(data, keys);
+                            cb({ _: tmp, ...obj });
+                            resolve({ _: tmp, ...obj });
+                        }
+                    });
                 });
             }
         };
@@ -127,15 +146,12 @@ Gun.chain.keys = async function (secret, callback) {
  * TODO: Broadcast files via relay server
  * TODO: ChainLocker
  */
-let { username } = os.userInfo();
-Gun.chain.scope = async function (what, callback, { verbose, alias, encoding }) {
+Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = 'utf8', encryption }) {
     let _gun = this;
     verbose = verbose ?? true;
-    alias = alias ?? username;
+    alias = alias ?? 'scope';
     let matches = await glob(what, { gitignore: true });
-    let keys = await _gun.keys([...what, alias]);
-    let { pub } = keys, soul = `__${pub}`;
-    _gun.vault('scope', keys);
+    let scoper = _gun.get(alias);
     try {
         let scope = chokidar.watch(matches, { persistent: true });
         const log = console.log;
@@ -149,67 +165,54 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding }) 
             }
         });
         scope
-            .on('add', async function (path) {
-            if (!fs.stat(path)) {
-                verbose && log(chalk.red(`File ${path} does not exist`));
+            .on('add', async function (_path, stats) {
+            if (!exists(_path) || !stats?.isFile()) {
+                verbose && log(chalk.red(`File ${_path} does not exist`));
                 return;
             }
-            let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path];
-            let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0];
-            nodepath.pop() && nodepath.pop();
-            if (nodepath && name) {
-                console.log(chalk.green(`scope add : ${name}`));
-                _gun.locker(nodepath)
-                    .put({ [name]: await fs.readFile(path, encoding) });
-                verbose && log(chalk.green(`File ${path} has been added`));
+            let [path, ext] = _path.split('.');
+            let { size } = stats;
+            let data;
+            if (encryption) {
+                data = await lz.encrypt({ file: await read(_path, encoding), ext, size }, encryption);
             }
             else {
-                log(chalk.red(`Error adding file ${path}`));
-                return;
+                data = { file: await read(_path, encoding), ext, size };
             }
+            scoper
+                .path(path)
+                .put(data);
+            verbose && log(chalk.green(`File ${_path} has been added`));
         })
-            .on('change', async function (path) {
-            if (!fs.stat(path)) {
-                verbose && log(chalk.red(`File ${path} does not exist`));
+            .on('change', async function (_path, stats) {
+            if (!exists(_path) || !stats?.isFile()) {
+                verbose && log(chalk.red(`File ${_path} does not exist`));
                 return;
             }
-            let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path.trim()];
-            let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0];
-            nodepath.pop() && nodepath.pop();
-            if (nodepath && name) {
-                _gun
-                    .locker(nodepath)
-                    .put({ [name]: fs.readFile(path) });
-                verbose &&
-                    _gun
-                        .locker(nodepath)
-                        .value((d) => {
-                        log('PATH\n' + chalk.green(d._['#']));
-                    });
-                verbose && log(chalk.green(`File ${path} has been changed`));
+            let [path, ext] = _path.split('.');
+            let { size } = stats;
+            let data;
+            if (encryption) {
+                data = await lz.encrypt({ file: await read(_path, encoding), ext, size }, encryption);
             }
             else {
-                log(chalk.red(`Error onChange for ${path}`));
-                return;
+                data = { file: await read(_path, encoding), ext, size };
             }
+            scoper
+                .path(path)
+                .put(data);
+            verbose && log(chalk.green(`File ${_path} has been changed`));
         })
-            .on('unlink', async function (path) {
-            if (!fs.stat(path)) {
-                verbose && log(chalk.red(`File ${path} does not exist`));
+            .on('unlink', async function (_path) {
+            if (!exists(_path)) {
+                verbose && log(chalk.red(`File ${_path} does not exist`));
                 return;
             }
-            let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path];
-            let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0];
-            nodepath.pop() && nodepath.pop();
-            if (nodepath && name) {
-                _gun.locker([...nodepath, name])
-                    .put(null);
-                verbose && log(chalk.green(`File ${path} has been removed`));
-            }
-            else {
-                log(chalk.red(`Error deleting file ${path}`));
-                return;
-            }
+            let [path, ext] = _path.split('.');
+            scoper
+                .path(path)
+                .put(null);
+            verbose && log(chalk.green(`File ${_path} has been removed`));
         });
         if (verbose) {
             scope
@@ -225,27 +228,34 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding }) 
 };
 /**
  *
- * @param directory The directory to unpack files to
- * @param callback
+ * @param alias The node location and directory to unpack files into
+ * @param encoding The encoding to use when reading files
+ * @param encryption The encryption keypair to use when encrypting files
  */
-Gun.chain.unpack = async function (what, callback, opts) {
-    let { alias, encoding } = opts ?? {};
+Gun.chain.unpack = async function ({ alias, encoding, encryption }) {
+    const log = console.log;
+    alias = alias || 'scope';
+    encoding = encoding ?? 'utf8';
     let _gun = this;
-    let keys = await _gun.keys([...what, alias]);
-    let { pub } = keys, soul = `__${pub}`;
-    let matches = await glob(what, { gitignore: true });
-    matches.forEach((path) => {
-        _gun.vault('scope', keys);
-        let nodepath = path.includes('/') ? path.split('/').map((x) => x.trim()) : [path];
-        let name = nodepath.length > 1 ? nodepath.at(nodepath.length - 1) : nodepath[0];
-        if (nodepath) {
-            nodepath.pop() && nodepath.pop();
-            _gun.locker(path.split('/').map((x) => x.trim())).value(file => {
-                if (file && name) {
-                    callback && callback(file);
-                    writeFileSync(file._['#'], encoding ?? "utf-8");
+    let scoper = _gun.get(alias);
+    scoper.on(dirs => {
+        delete dirs._;
+        Object.keys(dirs).forEach(dir => {
+            let _dir = dir.slice(0, dir.lastIndexOf('/'));
+            fs.mkdirpSync(alias + '/' + _dir);
+            _gun.path(alias + '.' + dir).once(async (data) => {
+                if (data) {
+                    if (encryption) {
+                        data = await lz.decrypt(data, encryption);
+                    }
+                    let { file, ext, size } = data;
+                    await write(alias + '/' + dir + '.' + ext, file, encoding);
+                    log(chalk.green(`File ${dir} has been unpacked. size: ${size}`));
+                }
+                else {
+                    log(chalk.red(`File data for ${dir} does not exist`));
                 }
             });
-        }
+        });
     });
 };

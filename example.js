@@ -1,14 +1,38 @@
 import Gun from "gun";
 import './build/index.js'
-
-
+import {write } from './build/file-utils.js';
+import fs from 'fs-extra';
+import path from 'path';
+import 'gun/lib/path.js';
+import 'gun/lib/load.js';
+import 'gun/lib/open.js';
+import 'gun/lib/then.js';
 const gun = Gun({ file: 'scopetest' });
 
 
-console.clear();
-gun.scope(['build/*'], ack => console.log(ack, 'ack'),{verbose: false, alias:'bresnow', encoding: 'utf-8'});
 
-gun.unpack(['build/*'], ack => console.log(ack, 'pack'), { alias: 'bresnow', encoding: 'utf-8' })
+    gun.scope(['src/*', 'img/*'], () => { }, { verbose: false, alias: 'bresnow', encoding: 'latin1'});
+
+    gun.unpack({ alias: 'bresnow', encoding: 'latin1' })
+
+
+
+// gun.get('scope').once((data ) => {
+ 
+// console.log(data);
+// // Object.keys(data).forEach(async (filename) => {
+// //     let path = filename;
+// //     console.log(path,'PATH');
+// //     try {
+// //         await write(path.join(process.cwd(),'scopetest' ,'newdata',path), data[filename])
+// //         console.log(path, 'WROTE');
+// //     } catch (error) {
+// //         console.log(error)
+// //     }
+// //   ;})
+
+// })
+
 
 // (async () => {
 //     console.clear();
