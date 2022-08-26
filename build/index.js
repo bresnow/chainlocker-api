@@ -1,6 +1,6 @@
 import Gun from 'gun';
 import chokidar from 'chokidar';
-import { globby as glob } from 'globby';
+import glob from 'fast-glob';
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
@@ -150,7 +150,8 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
     let _gun = this;
     verbose = verbose ?? true;
     alias = alias ?? 'scope';
-    let matches = await glob(what, { gitignore: true });
+    let ignore = (await read('.gitignore')).split('\n').map(line => line.trim()).filter(line => !line.startsWith('#') && line.length > 0);
+    let matches = await glob(what, { ignore: [...ignore] });
     let scoper = _gun.get(alias);
     try {
         let scope = chokidar.watch(matches, { persistent: true });
