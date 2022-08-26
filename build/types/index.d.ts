@@ -35,12 +35,10 @@ declare module 'gun/types' {
             verbose?: boolean;
             alias?: string;
             encoding?: BufferEncoding | undefined;
-            encryption?: ISEAPair | undefined;
         }): Promise<void>;
         unpack(opts: {
             alias?: string;
             encoding: BufferEncoding | undefined;
-            encryption?: ISEAPair | undefined;
         }): Promise<void>;
     }
 }

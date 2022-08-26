@@ -1,6 +1,6 @@
 import Gun from 'gun';
 import chokidar from 'chokidar';
-import { glob, chalk } from 'zx';
+import { globby as glob } from 'globby';
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
@@ -146,7 +146,7 @@ Gun.chain.keys = async function (secret, callback) {
  * TODO: Broadcast files via relay server
  * TODO: ChainLocker
  */
-Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = 'utf8', encryption }) {
+Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = 'utf8' }) {
     let _gun = this;
     verbose = verbose ?? true;
     alias = alias ?? 'scope';
@@ -160,70 +160,52 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
             if (callback) {
                 callback(path, event, matches);
                 if (verbose) {
-                    log(chalk.green(`scope callback fired : ${event} ${path}`));
+                    log(`scope callback fired : ${event} ${path}`);
                 }
             }
         });
         scope
             .on('add', async function (_path, stats) {
             if (!exists(_path) || !stats?.isFile()) {
-                verbose && log(chalk.red(`File ${_path} does not exist`));
+                verbose && log(`File ${_path} does not exist`);
                 return;
             }
             let [path, ext] = _path.split('.');
             let { size } = stats;
-            let data;
-            if (encryption) {
-                data = await lz.encrypt({ file: await read(_path, encoding), ext, size }, encryption);
-            }
-            else {
-                data = { file: await read(_path, encoding), ext, size };
-            }
-            scoper
-                .path(path)
-                .put(data);
-            verbose && log(chalk.green(`File ${_path} has been added`));
+            let data = { file: await read(_path, encoding), ext, size };
+            scoper.path(path).put(data);
+            verbose && log(`File ${_path} has been added`);
         })
             .on('change', async function (_path, stats) {
             if (!exists(_path) || !stats?.isFile()) {
-                verbose && log(chalk.red(`File ${_path} does not exist`));
+                verbose && log(`File ${_path} does not exist`);
                 return;
             }
             let [path, ext] = _path.split('.');
             let { size } = stats;
-            let data;
-            if (encryption) {
-                data = await lz.encrypt({ file: await read(_path, encoding), ext, size }, encryption);
-            }
-            else {
-                data = { file: await read(_path, encoding), ext, size };
-            }
-            scoper
-                .path(path)
-                .put(data);
-            verbose && log(chalk.green(`File ${_path} has been changed`));
+            let data = { file: await read(_path, encoding), ext, size };
+            scoper.path(path).put(data);
+            verbose && log(`File ${_path} has been changed`);
         })
             .on('unlink', async function (_path) {
             if (!exists(_path)) {
-                verbose && log(chalk.red(`File ${_path} does not exist`));
+                verbose && log(`File ${_path} does not exist`);
                 return;
             }
             let [path, ext] = _path.split('.');
-            scoper
-                .path(path)
-                .put(null);
-            verbose && log(chalk.green(`File ${_path} has been removed`));
+            scoper.path(path).put(null);
+            verbose && log(`File ${_path} has been removed`);
         });
         if (verbose) {
             scope
-                ?.on('addDir', (path) => log(chalk.magenta(`Directory ${path} has been added`)))
-                .on('unlinkDir', (path) => log(chalk.magenta(`Directory ${path} has been removed`)))
-                .on('error', (error) => log(chalk.magenta(`Watcher error: ${error}`)))
-                .on('ready', () => log(chalk.magenta('Initial scan complete. Ready for changes')));
+                ?.on('addDir', (path) => log(`Directory ${path} has been added`))
+                .on('unlinkDir', (path) => log(`Directory ${path} has been removed`))
+                .on('error', (error) => log(`Watcher error: ${error}`))
+                .on('ready', () => log('Initial scan complete. Ready for changes'));
         }
     }
     catch (err) {
-        console.log(chalk.red('If you want to use the scope feature, you must install `chokidar` by typing `npm i chokidar` in your terminal.'));
+        console.log('If you want to use the scope feature, you must install `chokidar` by typing `npm i chokidar` in your terminal.');
     }
 };
 /**
@@ -232,28 +214,25 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
  * @param encoding The encoding to use when reading files
  * @param encryption The encryption keypair to use when encrypting files
  */
-Gun.chain.unpack = async function ({ alias, encoding, encryption }) {
+Gun.chain.unpack = async function ({ alias, encoding }) {
     const log = console.log;
     alias = alias || 'scope';
     encoding = encoding ?? 'utf8';
     let _gun = this;
     let scoper = _gun.get(alias);
-    scoper.on(dirs => {
+    scoper.on((dirs) => {
         delete dirs._;
-        Object.keys(dirs).forEach(dir => {
+        Object.keys(dirs).forEach((dir) => {
             let _dir = dir.slice(0, dir.lastIndexOf('/'));
             fs.mkdirpSync(alias + '/' + _dir);
             _gun.path(alias + '.' + dir).once(async (data) => {
                 if (data) {
-                    if (encryption) {
-                        data = await lz.decrypt(data, encryption);
-                    }
                     let { file, ext, size } = data;
                     await write(alias + '/' + dir + '.' + ext, file, encoding);
-                    log(chalk.green(`File ${dir} has been unpacked. size: ${size}`));
+                    log(`File ${dir} has been unpacked. size: ${size}`);
                 }
                 else {
-                    log(chalk.red(`File data for ${dir} does not exist`));
+                    log(`File data for ${dir} does not exist`);
                 }
             });
         });

@@ -3,6 +3,7 @@
 	"version": "1.2.2",
 	"description": "Command line interface for GUN relay-server deployment, gun resource routes, and secure data storage/retrevial",
 	"main": "build/index.js",
+	"scope": "build/scope.js",
 	"types": "build/types/index.d.ts",
 	"type": "module",
 	"scripts": {
@@ -31,6 +32,7 @@
 		"elliptic": "^6.5.4",
 		"fsxx": "^0.1.0",
 		"global": "^4.4.0",
+		"globby": "^13.1.2",
 		"gun": "^0.2020.1237",
 		"lz-object": "^0.1.7",
 		"lz-string": "^1.4.4",

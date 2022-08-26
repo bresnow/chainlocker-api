@@ -1,8 +1,7 @@
 import Gun from "gun";
 import './build/index.js'
-import {write } from './build/file-utils.js';
-import fs from 'fs-extra';
-import path from 'path';
+
+
 import 'gun/lib/path.js';
 import 'gun/lib/load.js';
 import 'gun/lib/open.js';
