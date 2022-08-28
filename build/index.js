@@ -170,7 +170,7 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
     let ignore = (await read('.gitignore'))
         .split('\n')
         .map((line) => line.trim())
-        .filter((line) => (!line.startsWith('#') && line.length > 0) ? line : null);
+        .filter((line) => (!line.startsWith('#') && line.length > 0 ? line : null));
     let matches = await glob(what);
     let scoper = _gun.get(alias);
     try {
