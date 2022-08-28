@@ -12,17 +12,30 @@ import Pair from './pair.js';
 import lzString from 'lz-string';
 import { os } from 'zx/.';
 export const getCID = async (vaultname, keypair) => lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)));
-export async function SysUserPair(secret) {
-    let { username, platform, arch } = getImmutableMachineInfo();
-    let salt = secret
-        ? Object.values({ username, platform, arch }).concat(...secret)
-        : Object.values({ username, platform, arch });
-    let keys = await Pair({ username, platform, arch }, salt);
-    let workedImmutables = await Gun.SEA.work({ username, platform, arch }, keys, null, {
-        name: 'SHA-256',
-        salt
-    });
-    return { keys, username, serial: workedImmutables };
+export async function SysUserPair(secret, opts) {
+    let keys, workedImmutables;
+    if (typeof Window === 'undefined') {
+        let { username, platform, arch } = getImmutableMachineInfo();
+        username = opts?.alias || username;
+        let salt = secret
+            ? Object.values({ username, platform, arch }).concat(...secret)
+            : Object.values({ username, platform, arch });
+        keys = await Pair({ username, platform, arch }, salt);
+        workedImmutables = await Gun.SEA.work(salt, keys, null, {
+            name: 'SHA-256',
+            salt: { username, platform, arch }
+        });
+        return { keys, username, serial: workedImmutables };
+    }
+    else {
+        let salt = secret ?? [], alias = opts?.alias || 'chainlocker';
+        keys = await Pair(alias, salt);
+        workedImmutables = await Gun.SEA.work(salt, keys, null, {
+            name: 'SHA-256',
+            salt: { alias }
+        });
+        return { keys, username: alias, serial: workedImmutables };
+    }
 }
 export function getImmutableMachineInfo() {
     let username = os.userInfo().username, 
@@ -70,7 +83,12 @@ Gun.chain.vault = function (vault, keys, cback) {
             if (nodepath.length > 1) {
                 var i = 0, l = nodepath.length;
                 for (i; i < l; i++) {
-                    temp = temp.get(nodepath[i]);
+                    if (typeof nodepath[i] === 'string' || typeof nodepath[i] === 'object') {
+                        temp = temp.get(nodepath[i]);
+                    }
+                    if (typeof nodepath[i] === 'function') {
+                        temp = temp.on(nodepath[i]());
+                    }
                 }
             }
             else {
@@ -126,7 +144,6 @@ export function exists(path) {
     path = interpretPath(path);
     return fs.stat(path);
 }
-const SEA = Gun.SEA;
 export function interpretPath(...args) {
     return path.join(process.cwd(), ...(args ?? ''));
 }
@@ -150,17 +167,16 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
     let _gun = this;
     verbose = verbose ?? true;
     alias = alias ?? 'scope';
-    // let ignore = (await read('.gitignore') as string)
-    // 	.split('\n')
-    // 	.map((line) => line.trim())
-    // 	.filter((line) => !line.startsWith('#') && line.length > 0);
+    let ignore = (await read('.gitignore'))
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => (!line.startsWith('#') && line.length > 0) ? line : null);
     let matches = await glob(what);
     let scoper = _gun.get(alias);
     try {
         let scope = chokidar.watch(matches, { persistent: true });
         const log = console.log;
         scope.on('all', (event, path) => {
-            let fileOpts = { path, matches, event };
             if (callback) {
                 callback(path, event, matches);
                 if (verbose) {
@@ -176,7 +192,7 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
             }
             let [path, ext] = _path.split('.');
             let { size } = stats;
-            let data = { file: await read(_path, encoding), ext, size };
+            let data = { file: (await read(_path, encoding)), ext, size };
             scoper.path(path).put(data);
             verbose && log(`File ${_path} has been added`);
         })
@@ -187,7 +203,7 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
             }
             let [path, ext] = _path.split('.');
             let { size } = stats;
-            let data = { file: await read(_path, encoding), ext, size };
+            let data = { file: (await read(_path, encoding)), ext, size };
             scoper.path(path).put(data);
             verbose && log(`File ${_path} has been changed`);
         })

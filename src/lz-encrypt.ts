@@ -37,9 +37,6 @@ async function encrypt(
 			case 'utf16':
 				compress = lzString.compressToUTF16;
 				break;
-			// case 'uint8array':
-			//   compress = lzString.compressToUint8Array
-			//   break
 			case 'base64':
 				compress = lzString.compressToBase64;
 				break;
@@ -104,9 +101,6 @@ async function decrypt(
 				decomp = lzString.decompressFromUTF16(object);
 				decrypted = decomp && Gun.SEA.decrypt(decomp, encryptionkey);
 				break;
-			// case 'uint8array':
-			//   decomp = lzString.decompressFromUint8Array(object)  as any as string
-			//   decrypted = decomp && Gun.SEA.decrypt(decomp, encryptionkey)
 			case 'base64':
 				decomp = lzString.decompressFromBase64(object);
 				decrypted = decomp && Gun.SEA.decrypt(decomp, encryptionkey);

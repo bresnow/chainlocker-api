@@ -65,17 +65,30 @@ export declare type VaultOpts = {
 	encoding?: 'utf16' | 'base64' | 'uint8array' | 'uri';
 };
 
-export async function SysUserPair(secret?: string[]) {
-	let { username, platform, arch } = getImmutableMachineInfo();
-	let salt = secret
-		? Object.values({ username, platform, arch }).concat(...secret)
-		: Object.values({ username, platform, arch });
-	let keys = await Pair({ username, platform, arch }, salt);
-	let workedImmutables = await Gun.SEA.work({ username, platform, arch }, keys, null, {
-		name: 'SHA-256',
-		salt
-	});
-	return { keys, username, serial: workedImmutables };
+export async function SysUserPair(secret?: string | any[], opts?: { alias: string }) {
+	let keys, workedImmutables;
+	if (typeof Window === 'undefined') {
+		let { username, platform, arch } = getImmutableMachineInfo();
+		username = opts?.alias || username;
+		let salt = secret
+			? Object.values({ username, platform, arch }).concat(...secret)
+			: Object.values({ username, platform, arch });
+		keys = await Pair({ username, platform, arch }, salt);
+		workedImmutables = await Gun.SEA.work(salt, keys, null, {
+			name: 'SHA-256',
+			salt: { username, platform, arch }
+		});
+		return { keys, username, serial: workedImmutables };
+	} else {
+		let salt = secret ?? [],
+			alias = opts?.alias || 'chainlocker';
+		keys = await Pair(alias, salt);
+		workedImmutables = await Gun.SEA.work(salt, keys, null, {
+			name: 'SHA-256',
+			salt: { alias }
+		});
+		return { keys, username: alias, serial: workedImmutables };
+	}
 }
 export function getImmutableMachineInfo() {
 	let username = os.userInfo().username,
@@ -94,7 +107,7 @@ Gun.chain.vault = function (vault, keys, cback) {
 			throw new Error(err);
 		}
 		let lock = gun.get(vault);
-		lock.once(async function (data: { _: any }) {
+		lock.once(async function (data) {
 			let cID = await getCID(vault, keys);
 			if (!data) {
 				lock.put({ vault, vault_id: cID });
@@ -128,7 +141,12 @@ Gun.chain.vault = function (vault, keys, cback) {
 				var i = 0,
 					l = nodepath.length;
 				for (i; i < l; i++) {
-					temp = temp.get(nodepath[i]);
+					if (typeof nodepath[i] === 'string' || typeof nodepath[i] === 'object') {
+						temp = temp.get(nodepath[i]);
+					}
+					if (typeof nodepath[i] === 'function') {
+						temp = temp.on(nodepath[i]());
+					}
 				}
 			} else {
 				temp = temp.get(nodepath[0]);
@@ -188,7 +206,6 @@ export function exists(path: string) {
 	return fs.stat(path);
 }
 
-const SEA = Gun.SEA;
 export function interpretPath(...args: string[]): string {
 	return path.join(process.cwd(), ...(args ?? ''));
 }
@@ -215,10 +232,10 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
 	let _gun = this;
 	verbose = verbose ?? true;
 	alias = alias ?? 'scope';
-	// let ignore = (await read('.gitignore') as string)
-	// 	.split('\n')
-	// 	.map((line) => line.trim())
-	// 	.filter((line) => !line.startsWith('#') && line.length > 0);
+	let ignore = ((await read('.gitignore')) as string)
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => (!line.startsWith('#') && line.length > 0 ? line : null));
 
 	let matches = await glob(what);
 	let scoper = _gun.get(alias);
@@ -226,7 +243,6 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
 		let scope = chokidar.watch(matches, { persistent: true });
 		const log = console.log;
 		scope.on('all', (event, path) => {
-			let fileOpts = { path, matches, event };
 			if (callback) {
 				callback(path, event, matches);
 				if (verbose) {

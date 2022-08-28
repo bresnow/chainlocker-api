@@ -44,7 +44,9 @@ export declare type VaultOpts = {
     keys: ISEAPair;
     encoding?: 'utf16' | 'base64' | 'uint8array' | 'uri';
 };
-export declare function SysUserPair(secret?: string[]): Promise<{
+export declare function SysUserPair(secret?: string | any[], opts?: {
+    alias: string;
+}): Promise<{
     keys: ISEAPair;
     username: string;
     serial: string | undefined;
