@@ -2,8 +2,8 @@ import Gun, { GunMessagePut, GunSchema, IGunChain, IGunInstanceRoot, IGunUserIns
 import chokidar from 'chokidar';
 
 import lz from './lz-encrypt.js';
-import glob from 'fast-glob';
-import fs from 'fs/promises';
+import { globby } from 'globby';
+import fs from 'fs-extra';
 import 'gun/lib/path.js';
 import 'gun/lib/load.js';
 import 'gun/lib/open.js';
@@ -16,7 +16,77 @@ export const getCID = async (vaultname: string, keypair: ISEAPair) =>
 	lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)) as string);
 
 declare module 'gun/types' {
-	interface IGunInstance<TNode> extends IGunUserInstance {
+	interface IGunInstance<TNode> {
+		/**
+		 * Create a new vault context.
+		 *
+		 * Takes the lockername and generates the keys against machine info.
+		 * Should require sudo privilages to create a new vault.
+		 *
+		 */
+		vault(
+			vaultname: string,
+			keys: ISEAPair,
+			cb?: CallBack
+		): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>;
+		/**
+		 * Get a locker instance for a node in the chain.
+		 *
+		 * @param {string}
+		 */
+		locker(nodepath: string | string[]): {
+			value(cb: CallBack): Promise<Record<string, any>>;
+			put(data: string | Record<string, any> | undefined, cb?: CallBack): Promise<void>;
+		};
+		keys(secret?: string | string[], callback?: CallBack): Promise<ISEAPair>;
+		scope(
+			what: string[],
+			callback: ScopeCb | undefined,
+			opts: {
+				verbose?: boolean;
+				alias?: string;
+				encoding?: BufferEncoding | undefined;
+			}
+		): Promise<void>;
+
+		unpack(opts: { alias?: string; encoding: BufferEncoding | undefined }): void;
+	}
+	interface IGunUserInstance{
+		/**
+		 * Create a new vault context.
+		 *
+		 * Takes the lockername and generates the keys against machine info.
+		 * Should require sudo privilages to create a new vault.
+		 *
+		 */
+		vault(
+			vaultname: string,
+			keys: ISEAPair,
+			cb?: CallBack
+		): IGunUserInstance<any, any, any, IGunInstanceRoot<any, IGunInstance<any>>>;
+		/**
+		 * Get a locker instance for a node in the chain.
+		 *
+		 * @param {string}
+		 */
+		locker(nodepath: string | string[]): {
+			value(cb: CallBack): Promise<Record<string, any>>;
+			put(data: string | Record<string, any> | undefined, cb?: CallBack): Promise<void>;
+		};
+		keys(secret?: string | string[], callback?: CallBack): Promise<ISEAPair>;
+		scope(
+			what: string[],
+			callback: ScopeCb | undefined,
+			opts: {
+				verbose?: boolean;
+				alias?: string;
+				encoding?: BufferEncoding | undefined;
+			}
+		): Promise<void>;
+
+		unpack(opts: { alias?: string; encoding: BufferEncoding | undefined }): void;
+	}
+	interface IGunChain<TNode> {
 		/**
 		 * Create a new vault context.
 		 *
@@ -216,7 +286,7 @@ export async function write(path: any, content: string, encoding: BufferEncoding
 
 export async function read(path: string, encoding?: BufferEncoding) {
 	path = interpretPath(path);
-	return fs.readFile(path, { encoding });
+	return fs.readFileSync(path, { encoding });
 }
 /**
  * Scope watches the files in a directory and stores them in rad. No separate .ignore files as it uses the .gitignore file already in your current directory.
@@ -227,16 +297,11 @@ export async function read(path: string, encoding?: BufferEncoding) {
  * TODO: ChainLocker
  */
 
-Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = 'utf8' }) {
+Gun.chain.scope = async function (what: string[], callback, { verbose, alias, encoding = 'utf8' }) {
 	let _gun = this;
 	verbose = verbose ?? true;
 	alias = alias ?? 'scope';
-	let ignore = ((await read('.gitignore')) as string)
-		.split('\n')
-		.map((line) => line.trim())
-		.filter((line) => (!line.startsWith('#') && line.length > 0 ? line : null));
-
-	let matches = await glob(what);
+	let matches = await globby(what, {gitignore: true});
 	let scoper = _gun.get(alias);
 	try {
 		let scope = chokidar.watch(matches, { persistent: true });
@@ -301,7 +366,6 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
  *
  * @param alias The node location and directory to unpack files into
  * @param encoding The encoding to use when reading files
- * @param encryption The encryption keypair to use when encrypting files
  */
 Gun.chain.unpack =  function ({ alias, encoding }) {
 	const log = console.log;

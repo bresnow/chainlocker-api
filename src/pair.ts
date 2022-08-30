@@ -1,6 +1,3 @@
-let crypto = import('crypto').then((WebCrypto) => {
-	return WebCrypto.webcrypto;
-});
 import forge from 'node-forge';
 import EC from 'elliptic';
 import btoa from 'btoa';
