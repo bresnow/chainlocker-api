@@ -1,4 +1,4 @@
-import Gun, { GunMessagePut, IGunChain, IGunInstanceRoot, IGunUserInstance, ISEAPair } from 'gun';
+import Gun, { GunMessagePut, GunSchema, IGunChain, IGunInstanceRoot, IGunUserInstance, ISEAPair } from 'gun';
 import chokidar from 'chokidar';
 
 import lz from './lz-encrypt.js';
@@ -39,8 +39,6 @@ declare module 'gun/types' {
 			put(data: string | Record<string, any> | undefined, cb?: CallBack): Promise<void>;
 		};
 		keys(secret?: string | string[], callback?: CallBack): Promise<ISEAPair>;
-	}
-	interface IGunChain<TNode> extends IGunInstance {
 		scope(
 			what: string[],
 			callback: ScopeCb | undefined,
@@ -51,8 +49,9 @@ declare module 'gun/types' {
 			}
 		): Promise<void>;
 
-		unpack(opts: { alias?: string; encoding: BufferEncoding | undefined }): Promise<void>;
+		unpack(opts: { alias?: string; encoding: BufferEncoding | undefined }): void;
 	}
+
 }
 export declare type ScopeCb = (
 	path?: string,
@@ -304,7 +303,7 @@ Gun.chain.scope = async function (what, callback, { verbose, alias, encoding = '
  * @param encoding The encoding to use when reading files
  * @param encryption The encryption keypair to use when encrypting files
  */
-Gun.chain.unpack = async function ({ alias, encoding }) {
+Gun.chain.unpack =  function ({ alias, encoding }) {
 	const log = console.log;
 	alias = alias || 'scope';
 	encoding = encoding ?? 'utf8';
@@ -318,7 +317,7 @@ Gun.chain.unpack = async function ({ alias, encoding }) {
 			fs.mkdir(alias + '/' + _dir, { recursive: true });
 			_gun.path(alias + '.' + dir).once(async (data) => {
 				if (data) {
-					let { file, ext, size } = data;
+					let { file, ext, size } = data as any;
 					await write(alias + '/' + dir + '.' + ext, file, encoding);
 					log(`File ${dir} has been unpacked. size: ${size}`);
 				} else {

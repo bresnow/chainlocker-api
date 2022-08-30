@@ -1,6 +1,7 @@
 testing*.js
 # Logs
 .chainlocker
+scopetest
 bak
 test
 radata
