@@ -2,7 +2,7 @@ import Gun, { GunMessagePut, GunSchema, IGunChain, IGunInstanceRoot, IGunUserIns
 import chokidar from 'chokidar';
 
 import lz from './lz-encrypt.js';
-import { globby } from 'globby';
+import globby from 'fast-glob';
 import fs from 'fs-extra';
 import 'gun/lib/path.js';
 import 'gun/lib/load.js';
@@ -301,7 +301,7 @@ Gun.chain.scope = async function (what: string[], callback, { verbose, alias, en
 	let _gun = this;
 	verbose = verbose ?? true;
 	alias = alias ?? 'scope';
-	let matches = await globby(what, {gitignore: true});
+	let matches = await globby(what);
 	let scoper = _gun.get(alias);
 	try {
 		let scope = chokidar.watch(matches, { persistent: true });
