@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../securerender"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "securerender"
+	}
+}

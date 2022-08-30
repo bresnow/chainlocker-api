@@ -33,9 +33,9 @@ await $`git status`;
 try {
 	await $`yarn prettier`;
 	await $`yarn publish --new-version ${version} --message "${message}"`;
+	await $`git add --all`;
+	await $`git commit -s -m ${`${message} | ${version}`}`;
+	await $`git push`;
 } catch (error) {
 	console.log(chalk.red(error));
 }
-await $`git add --all`;
-await $`git commit -s -m ${`${message} | ${version}`}`;
-await $`git push`;

@@ -11,7 +11,7 @@ import 'gun/lib/then.js';
 import path from 'path';
 import Pair from './pair.js';
 import lzString from 'lz-string';
-import { os } from 'zx/.';
+import os from 'os';
 export const getCID = async (vaultname: string, keypair: ISEAPair) =>
 	lzString.compressToEncodedURIComponent((await Gun.SEA.work(vaultname, keypair)) as string);
 
